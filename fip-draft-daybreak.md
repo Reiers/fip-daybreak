@@ -47,14 +47,63 @@ Five years later, the empirical evidence is clear:
 
 **1. The multiplier has created a permissioned consensus layer.**
 
-The network's quality-adjusted power (QAP) is approximately 22 EiB, while raw byte power (RBP) is approximately 11 EiB. Using the standard decomposition:
+As of epoch 5,796,404 (February 2026, sourced from [filfox.info API](https://filfox.info/api/v1/overview)):
+
+| Parameter | Value |
+|---|---|
+| Raw Byte Power (RBP) | 2.17 EiB |
+| Quality-Adjusted Power (QAP) | 18.50 EiB |
+| Circulating Supply | 832.5M FIL |
+| Daily Mined | 66,249 FIL |
+| Active Miners | 923 |
+| Network Baseline | 114.21 EiB |
+
+Using the standard decomposition:
 
 ```
-Fil+ consensus share = 10 × (QAP - RBP) / (9 × QAP) ≈ 56%
-Fil+ physical storage share = (QAP/RBP - 1) / 9 ≈ 11.5%
+Fil+ consensus share = 10 × (QAP - RBP) / (9 × QAP) = 10 × (18.50 - 2.17) / (9 × 18.50) ≈ 98.1%
+Fil+ physical storage share = (QAP/RBP - 1) / 9 = (18.50/2.17 - 1) / 9 ≈ 83.6%
 ```
 
-11.5% of actual physical hardware controls 56% of block rewards through human-granted DataCap allocations. This directly contradicts Filecoin's [mission statement](https://github.com/filecoin-project/FIPs/blob/master/mission.md): *"No centralized parties can control, stop, or censor the network, its operation, or its participants."*
+83.6% of physical storage, boosted by human-granted DataCap, controls **98.1% of consensus power**. The remaining 16.4% of storage (CC sectors) shares just 1.9% of block rewards. This directly contradicts Filecoin's [mission statement](https://github.com/filecoin-project/FIPs/blob/master/mission.md): *"No centralized parties can control, stop, or censor the network, its operation, or its participants."*
+
+**1a. The 10x multiplier does not increase total block rewards — it is a pure redistribution.**
+
+This is the foundational economic fact motivating this FIP. The Filecoin minting model ([Block Reward Minting](https://spec.filecoin.io/#section-systems.filecoin_token.block_reward_minting)) defines:
+
+- **Simple minting**: `M_S(t) = M_∞S · (1 − e^{−λt})` — a function of elapsed time only.
+- **Baseline minting**: `M_B(t) = M_∞B · (1 − e^{−λθ(t)})` — where the effective network time θ(t) depends on cumulative *raw-byte* power.
+
+Critically, the effective network time θ is derived from:
+
+```
+R̄(t) := min{b(t), R(t)}
+```
+
+where `R(t)` is defined as *"the instantaneous network raw-byte power (the total amount of bytes among all active sectors)"* (spec §5.2.2). This is the sum of physical sector sizes — **unaffected by quality multipliers**.
+
+**Therefore:** Changing VDWM leaves `R(t)` unchanged → `R̄_Σ(t)` unchanged → `θ(t)` unchanged → `M(t) = M_S(t) + M_B(t)` unchanged. The multiplier is a zero-sum redistribution: it taxes CC sectors to subsidize Fil+ sectors, with no net increase to the reward pool.
+
+We validated this by numerical simulation (CUDA, NVIDIA RTX 5080 GPU — [source code](https://github.com/Reiers/super-fip-sim)). Starting from the current chain state, we projected 12 scenarios across 10 years:
+
+| Scenario | VDWM | Year 1 Issuance | Year 5 Issuance | Year 10 Issuance |
+|---|---|---|---|---|
+| Status Quo | 10 | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
+| Sector Parity | 1 | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
+
+Values are identical to 8 significant figures across the full projection. **Removing the multiplier does not reduce network rewards by a single FIL.**
+
+The impact on per-sector economics is dramatic. For a 32 GiB CC sector at the current epoch:
+
+| Metric | With Fil+ (VDWM=10) | Without Fil+ (VDWM=1) | Change |
+|---|---|---|---|
+| Daily reward | 0.000107 FIL | 0.000910 FIL | **+8.5×** |
+| Storage pledge (20 days) | 0.00213 FIL | 0.01820 FIL | +8.5× |
+| Consensus pledge | 0.06517 FIL | 0.06517 FIL | **unchanged** |
+| Total initial pledge | 0.0673 FIL | 0.0834 FIL | +24% |
+| Annual ROI on pledge | 58% | 399% | **+6.9×** |
+
+The consensus pledge is unchanged because `max(baseline, QAP)` evaluates to the baseline (114.21 EiB) in both cases — the network is far below baseline regardless of VDWM.
 
 **2. The subsidy mechanism has been extensively gamed.**
 
@@ -62,7 +111,9 @@ Community analyses ([notary-governance#940](https://github.com/filecoin-project/
 
 **3. Raw byte power is in sustained decline.**
 
-RBP has declined >30% from its peak. The cost structure of CC mining has become unfavorable relative to the rewards available after the 10x multiplier diverts block rewards to QAP sectors. Storage providers who cannot access DataCap face an effective ~50% tax on their block rewards. This drives rational providers out of the network, reducing both its security (less physical storage) and its capacity to serve future demand.
+RBP peaked at ~19 EiB in mid-2022 and has declined to 2.17 EiB — an **89% decline**. The network is losing physical storage capacity at ~25% per year. The cost structure of CC mining has become deeply unfavorable: a CC sector earns just 0.000107 FIL/day ($0.00016) while a Fil+ sector earns 0.001067 FIL/day ($0.0016) — a 10× gap for identical physical hardware. Storage providers who cannot access DataCap face an effective ~90% tax on their block rewards. This drives rational providers out of the network, reducing both its security (less physical storage) and its capacity to serve future demand.
+
+The network's RBP now represents just **1.9% of the baseline** (2.17 EiB vs 114.21 EiB). The effective network time θ is 3.34 years — lagging 2.2 years behind real time. This means 68% of the baseline minting allocation (~524M FIL) remains effectively unreachable under current conditions.
 
 **4. The community has been requesting reform for over two years.**
 
@@ -229,9 +280,22 @@ A lower g means a larger θ(t) for the same cumulative network power, which unlo
 M_B(t) = M_∞B × (1 - e^(-λ × θ(t)))
 ```
 
-**Concrete effect**: At current ~11 EiB RBP, the 100% growth baseline is far ahead of the network. Reducing to 50% brings the baseline closer to actual RBP, partially unlocking deferred baseline minting and increasing per-epoch rewards for current participants — without changing the total FIL supply or the long-term minting schedule.
+**Concrete effect**: At current 2.17 EiB RBP, the 100% growth baseline (114.21 EiB) is far ahead of the network. Reducing to 50% changes the effective network time calculation, partially unlocking deferred baseline minting and increasing daily issuance by approximately 8% — without changing the total FIL supply or the long-term minting schedule.
 
-This recalibration is conservative: the 50% rate still exceeds global storage market growth (~40% annually per IDC estimates) and remains aspirational.
+**Simulation results** — baseline growth rate sensitivity at Year 5 (VDWM=1, RBP stable):
+
+| Baseline Growth | Daily Issuance | Reward/TiB | Pledge/32GiB | ROI |
+|---|---|---|---|---|
+| 0% (freeze) | +24%* | 0.01824 | 0.0856 | 243% |
+| 25%/year | +16%* | 0.01824 | 0.0357 | 583% |
+| 50%/year (proposed) | +8%* | 0.01824 | 0.0212 | 984% |
+| 100%/year (current) | baseline | 0.01824 | 0.0137 | 1,518% |
+
+*Percentage increase in daily issuance vs 100% baseline growth.
+
+Note: rewards per TiB are approximately equal across all growth rates (because RBP << baseline in all scenarios, so `R̄ = RBP` regardless). The primary effect of slower baseline growth is on the consensus pledge denominator: `max(baseline, QAP)` yields a smaller baseline, which *increases* the consensus pledge per sector. The net ROI is therefore lower with slower growth.
+
+This presents a deliberate trade-off: **the 50% rate unlocks more total minting** (benefiting the network's token economics and current participants collectively) **while modestly increasing per-sector pledge** (a stronger per-sector commitment). The 50% rate still exceeds global storage market growth (~40% annually per IDC estimates) and remains aspirational. Since consensus pledge provides security guarantees, the increased pledge under 50% growth can be viewed as a feature rather than a cost — it raises the economic barrier for flash-power attacks during the multiplier transition.
 
 #### Implementation
 
@@ -291,9 +355,21 @@ A lockup is superior to a fee because:
 
 ### Why Recalibrate the Baseline?
 
-The 100% annual growth rate was set assuming aggressive adoption. After 5 years, the network has never sustained this growth rate. The baseline has outpaced reality, meaning baseline minting rewards are heavily deferred — punishing current participants who are maintaining the network.
+The 100% annual growth rate was set assuming aggressive adoption. After 5.5 years, the network has never exceeded the baseline — RBP peaked at 19 EiB while the baseline was already 35 EiB at that time. Today RBP is just 1.9% of the 114 EiB baseline, and the gap widens exponentially (baseline in 5 years: 3,656 EiB; in 10 years: 116,954 EiB).
 
-Reducing to 50% is conservative: it still exceeds actual network growth and global storage market growth (~40%/year). It provides immediate relief to current SPs without changing the total FIL supply. The baseline was always intended to be adjustable: the spec notes *"The community can come together to slow down the rate of growth."*
+Our simulation reveals a nuanced trade-off:
+
+- **More total minting**: Reducing g increases the effective network time θ (because `θ = (1/g) · ln(g · R̄_Σ / b₀ + 1)` grows when g shrinks). At the transition, θ jumps from ~3.51M to ~4.78M epochs, unlocking ~69M additional FIL of baseline minting and increasing ongoing daily issuance by ~8%.
+
+- **Higher consensus pledge**: The consensus pledge formula `0.30 × CircSupply × SectorQAP / max(Baseline, QAP)` produces a larger pledge when the forward baseline is smaller. At Year 5 with 50% growth, consensus pledge is ~1.5× higher than with 100% growth.
+
+We recommend 50% for two reasons:
+
+1. **The spec anticipated adjustment**: The minting model specification explicitly states *"The community can come together to slow down the rate of growth when the network is providing 1-10% of the world's storage."* The network currently provides well under 0.01% of world storage yet the baseline assumes 100% growth in perpetuity.
+
+2. **Higher pledge strengthens the multiplier transition**: During the 12-month VDWM reduction, the slightly higher pledge from a slower baseline provides additional economic security against flash-power attacks. This is a deliberate design complement to the CC offboarding reform (Change 3).
+
+If the community prefers to maximize per-sector ROI, the baseline growth rate can remain at 100% without affecting the other three changes. The four changes in this FIP are independently valuable.
 
 ## Backwards Compatibility
 
@@ -436,11 +512,31 @@ This is comparable in scope to previous network upgrade migrations (e.g., nv22 D
 
 - [ ] Precise computation of new TotalFilecoin constant at the migration epoch
 - [ ] Gas benchmarking for the PledgeLockupQueue operations
-- [ ] Economic modeling: simulate multiplier reduction impact on QAP, pledge, and minting rate across all phases
+- [x] Economic modeling: simulate multiplier reduction impact on QAP, pledge, and minting rate across all phases — **COMPLETE** (CUDA simulation, 12 scenarios × 3,650 days + 210-point parameter sweep = 44,850 data points. [Source](https://github.com/Reiers/super-fip-sim))
 - [ ] Formal security analysis: validate the 7-day lockup against flash power attack models
 - [ ] Calibration network testing of all four changes
 - [ ] Coordinate with FIP editors for number assignment
 - [ ] Open GitHub Discussion for community review
+
+## Simulation Methodology
+
+The economic claims in this FIP are supported by a numerical simulation validated against the Filecoin protocol specification.
+
+**Implementation:** CUDA C++ executed on an NVIDIA RTX 5080 GPU (Blackwell architecture, 84 SMs). Source code: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim).
+
+**Calibration (genesis → current epoch):**
+1. Computed cumulative capped raw-byte power `R̄_Σ` from genesis (epoch 0) to the current epoch (5,796,404) using 10 historical RBP data points interpolated linearly, stepping in daily (2,880-epoch) increments.
+2. Derived effective network time `θ = (1/g) · ln(g · R̄_Σ / b₀ + 1)` per the spec formula.
+3. Cross-validated: simple minting at current epoch = 155.46M FIL (within 1% of chain state); baseline minted = 246.31M FIL; total = 401.78M FIL.
+
+**Forward projection:**
+4. From current state, projected 10 years forward under 12 named scenarios and 210 parameter sweep combinations (VDWM × RBP trend × baseline growth).
+5. Each scenario steps day-by-day, tracking: daily issuance, per-sector rewards, pledge components, circulating supply, and ROI.
+6. For baseline recalibration scenarios: the effective_time formula uses `G_DEFAULT` (since θ remains in the historical baseline regime where g was unchanged), while the forward baseline for pledge uses `b_current × exp(g_new × elapsed_epochs)`.
+
+**Key validation:** Daily issuance is identical (to 8 significant figures) across all VDWM values at every time step — confirming analytically and numerically that the multiplier does not affect total minting.
+
+**Data:** 12 scenario CSVs (3,650 daily data points each) + 210-point parameter sweep × 5 checkpoints. Total: 44,850 data points. All results are reproducible from the published source code.
 
 ## References
 
@@ -463,6 +559,8 @@ This is comparable in scope to previous network upgrade migrations (e.g., nv22 D
 | [Sector Quality](https://spec.filecoin.io/#section-systems.filecoin_mining.sector.sector-quality) | Quality-adjusted power specification |
 | [CryptoEconomics](https://spec.filecoin.io/#section-algorithms.cryptoecon) | Economic parameters |
 | [@irenegia WindowPoSt analysis](https://drive.google.com/file/d/1notObdkPT1BCztgspIpzSUAzWSrM8h81/view) | Formal security analysis of termination fees |
+| [Economic Simulation](https://github.com/Reiers/super-fip-sim) | CUDA simulation: 12 scenarios, 44,850 data points (RTX 5080) |
+| [FIP-0100](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) | Per-sector daily fee (batch balancer removal) |
 
 ## Copyright
 
