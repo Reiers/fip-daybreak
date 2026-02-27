@@ -2,7 +2,7 @@
 fip: "XXXX"
 title: "Daybreak: Restore Equal Sector Quality and Burn Mining Reserve"
 author: Reiers (@Reiers)
-discussions-to: https://github.com/filecoin-project/FIPs/discussions/XXXX
+discussions-to: https://github.com/filecoin-project/FIPs/discussions/1238
 status: Draft
 type: Technical
 category: Core
