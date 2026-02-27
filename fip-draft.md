@@ -120,9 +120,9 @@ The consensus pledge is unchanged because its denominator $\max(Baseline, QAP)$ 
 
 ### The baseline gap is now structural
 
-The baseline function grows at 100% per year from an initial value of ~2.5 EiB. The network exceeded the baseline from approximately April 2021 through early 2023 — at peak (mid-2022), RBP reached ~19.5 EiB against a baseline of ~8.2 EiB. During this period, baseline minting operated at full rate.
+The baseline function grows at 100% per year from an initial value of ~2.5 EiB. The network exceeded the baseline from early 2021 through approximately April 2023 — at peak (mid-2022), RBP reached ~19.5 EiB against a baseline of ~8 EiB. During this period, baseline minting operated at full rate.
 
-Since early 2023, RBP has fallen far below the baseline and the gap widens exponentially:
+Since mid-2023, RBP has fallen far below the baseline and the gap widens exponentially:
 
 | Metric | Value |
 |---|---|
