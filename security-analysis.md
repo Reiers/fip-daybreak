@@ -25,9 +25,9 @@ All calculations use the following on-chain values:
 | FIL price | $1.50 | Filfox API |
 | Avg tipset interval | 30.24s | Filfox API |
 | F3 finality | ~30 seconds | FIP-0086 |
-| Chain finality (pre-F3) | 900 epochs (7.5 hours) | policy_constants |
-| Fault max age | 42 days | policy_constants |
-| Reward vesting | 180 days (75% locked, 25% immediate) | REWARD_VESTING_SPEC |
+| Chain finality (pre-F3) | 900 epochs (7.5 hours) | `policy_constants` |
+| Fault max age | 42 days | `policy_constants` |
+| Reward vesting | 180 days (75% locked, 25% immediate) | `REWARD_VESTING_SPEC` |
 
 ### Post-Daybreak projected values (VDWM=1):
 
@@ -50,7 +50,7 @@ All calculations use the following on-chain values:
 |---|---|---|
 | **Byzantine SP** | Controls one or more storage providers. Can onboard/terminate sectors at will. Has finite capital. | Extract more FIL than their honest participation would yield |
 | **Malicious Notary** | Can issue datacap to chosen SPs within Fil+ governance rules (FIP-0076 DDO allocation constraints) | Front-run transition to maximize Fil+ benefit for allies |
-| **Colluding Cartel** | Multiple SPs coordinating. Combined capital C_cartel. May include a notary. | Manipulate power distribution to extract value or disrupt consensus |
+| **Colluding Cartel** | Multiple SPs coordinating. Combined capital $C_{\text{cartel}}$. May include a notary. | Manipulate power distribution to extract value or disrupt consensus |
 | **External Attacker** | No existing SP infrastructure. Has capital only. | Acquire 51% consensus power to double-spend or censor |
 
 ### Security properties to prove
@@ -78,34 +78,34 @@ An attacker with capital K onboards N = K/IP(e) CC sectors at epoch e during the
 ### 2.2 Economic model
 
 **Cost components:**
-- Pledge locked: N × IP(e) = K (fully committed)
-- Gas for ProveCommitSectors3: N × ~177M gas × baseFee (currently ~100 attoFIL/gas = negligible)
-- Gas for TerminateSectors: N × ~15M gas × baseFee (negligible)
-- Termination fee: N × TERM_FEE(e) = N × 0.085 × IP(e)
+- Pledge locked: $N \times \text{IP}(e) = K$ (fully committed)
+- Gas for `ProveCommitSectors3`: $N \times$ ~177M gas × baseFee (currently ~100 attoFIL/gas = negligible)
+- Gas for `TerminateSectors`: $N \times$ ~15M gas × baseFee (negligible)
+- Termination fee: $N \times 0.085 \times \text{IP}(e)$
 
 **Revenue components:**
-- Block rewards: N × reward_rate(e) × T
-- But 75% of rewards vest over 180 days (REWARD_VESTING_SPEC)
-- Immediate liquid reward: N × 0.25 × reward_rate(e) × T
-- Vested reward: N × 0.75 × reward_rate(e) × T × (T/180_days) (partial vesting)
+- Block rewards: $N \times r(e) \times T$
+- But 75% of rewards vest over 180 days (`REWARD_VESTING_SPEC`)
+- Immediate liquid reward: $N \times 0.25 \times r(e) \times T$
+- Vested reward: $N \times 0.75 \times r(e) \times T \times (T/180)$ (partial vesting)
 
 **On termination:**
-- Pledge returned: N × (IP(e) - TERM_FEE(e))
+- Pledge returned: $N \times (\text{IP}(e) - \text{TermFee}(e))$
 - Unvested rewards FORFEITED (returned to the reward pool)
 
 ### 2.3 Profit function
 
 The attacker's profit from one attack cycle:
 
-$$\text{Profit}(T) = \text{Liquid\_Reward}(T) - \text{Term\_Fee} - \text{Opportunity\_Cost}(T)$$
+$$\text{Profit}(T) = \text{LiquidReward}(T) - \text{TermFee} - \text{OpportunityCost}(T)$$
 
 where:
 
-$$\text{Liquid\_Reward}(T) = N \times 0.25 \times r(e) \times T$$
+$$\text{LiquidReward}(T) = N \times 0.25 \times r(e) \times T$$
 
-$$\text{Term\_Fee} = N \times 0.085 \times \text{IP}(e)$$
+$$\text{TermFee} = N \times 0.085 \times \text{IP}(e)$$
 
-$$\text{Opportunity\_Cost}(T) = N \times \text{IP}(e) \times r_{\text{market}} \times \frac{T}{365}$$
+$$\text{OpportunityCost}(T) = N \times \text{IP}(e) \times r_{\text{market}} \times \frac{T}{365}$$
 
 Note: I use only the 25% immediate reward because on termination, unvested rewards are forfeit. The attacker does not receive the 75% vested portion if they terminate early.
 
@@ -125,7 +125,7 @@ Using post-Daybreak values at transition completion (worst case for attacker —
 
 Ignoring opportunity cost (conservative — makes attack look better):
 
-$$T_{\text{break-even}} = \frac{\text{Term\_Fee}}{0.25 \times r(e)} = \frac{0.007086}{0.25 \times 0.000910} = \frac{0.007086}{0.0002275} = 31.1 \text{ days}$$
+$$T_{\text{break-even}} = \frac{\text{TermFee}}{0.25 \times r(e)} = \frac{0.007086}{0.25 \times 0.000910} = \frac{0.007086}{0.0002275} = 31.1 \text{ days}$$
 
 **The attacker must hold sectors for 31 days just to break even on the termination fee, receiving only 25% of earned rewards as liquid.**
 
@@ -165,17 +165,17 @@ If the attacker onboards enough power to meaningfully change the reward distribu
 
 Let $A$ = attacker's power, $P$ = honest network power = 2.17 EiB.
 
-Reward per byte for attacker $= \text{daily\_issuance} \times \frac{A}{P + A}$
+Reward per byte for attacker $= \text{DailyIssuance} \times \frac{A}{P + A}$
 
 The marginal return of adding power $A$ to a network of power $P$:
 
-$$\frac{\partial(\text{Reward})}{\partial A} = \text{daily\_issuance} \times \frac{P}{(P + A)^2}$$
+$$\frac{\partial(\text{Reward})}{\partial A} = \text{DailyIssuance} \times \frac{P}{(P + A)^2}$$
 
 This is strictly decreasing in A. As the attacker adds more power, the per-unit reward decreases. A flash power attack at scale is WORSE than at small scale because the attacker dilutes their own reward.
 
 At $A = P$ (doubling network power):
-- Per-unit reward $= \frac{\text{daily\_issuance}}{2P} = 0.5 \times$ original rate
-- But pledge per unit stays at IP(e) (based on network QAP smoothed estimate, which lags)
+- Per-unit reward $= \frac{\text{DailyIssuance}}{2P} = 0.5 \times$ original rate
+- But pledge per unit stays at $\text{IP}(e)$ (based on network QAP smoothed estimate, which lags)
 
 The key insight: **the pledge formula uses a smoothed network power estimate**, not instantaneous. The smoothing filter has a time constant of ~hours. So a sudden onboarding pays pledge based on the PRE-attack power level, but earns rewards based on the POST-attack level (diluted). This makes large flash attacks even worse.
 
@@ -189,7 +189,7 @@ $$\text{Profit}(N, T, e) \approx 0 \quad \text{at } T \approx 25 \text{ days (br
 
 At $T = 25$ days, the "profit" is zero excluding capital opportunity cost. Including a conservative 5% annual opportunity cost:
 
-$$\text{Opportunity\_Cost}(25) = K \times 0.05 \times \frac{25}{365} = 0.00342 \times K$$
+$$\text{OpportunityCost}(25) = K \times 0.05 \times \frac{25}{365} = 0.00342 \times K$$
 
 $$\text{Net Profit at } T{=}25 = 0 - 0.00342K < 0$$
 
@@ -211,7 +211,7 @@ An SP times the commitment of Fil+ sectors to maximize the quality multiplier be
 
 Under the grandfathering approach:
 - **Existing sectors** retain their original quality (VDWM at activation epoch) until they expire, extend, or undergo replica update
-- **New sectors** get VDWM = `verified_deal_weight_multiplier_at(activation_epoch)`
+- **New sectors** get VDWM = `verified_deal_weight_multiplier_at(activation_epoch)` at the time of activation
 
 This means the arbitrage surface is limited to:
 1. Timing of NEW Fil+ sector commitments during the transition
@@ -219,7 +219,7 @@ This means the arbitrage surface is limited to:
 
 ### 3.3 Maximum arbitrage value (new sectors)
 
-A Fil+ sector committed at epoch e has quality multiplier M(e) = VDWM_code(e) / QBM.
+A Fil+ sector committed at epoch $e$ has quality multiplier $M(e) = \text{VDWM}(e) / \text{QBM}$.
 
 At transition start: M = 100/10 = 10×
 At transition end: M = 10/10 = 1×
@@ -230,7 +230,7 @@ $$\text{Arbitrage}(e_1, e_2) = r \times (M(e_1) - M(e_2)) \times L_{\text{remain
 
 **Worst case** (commit at transition start vs waiting until end):
 
-$$\text{Max\_Arbitrage} = 0.000910 \times (10 - 1) \times 3.5 \times 365 = 0.000910 \times 9 \times 1277.5 = 10.46 \text{ FIL/sector}$$
+$$\text{MaxArbitrage} = 0.000910 \times (10 - 1) \times 3.5 \times 365 = 0.000910 \times 9 \times 1277.5 = 10.46 \text{ FIL/sector}$$
 
 **BUT** — this isn't an "attack." This is simply committing a Fil+ sector at the start of the transition, which any SP can already do today. The transition doesn't create a NEW arbitrage opportunity; it creates a DIMINISHING one.
 
@@ -253,7 +253,7 @@ An SP with an existing 10× Fil+ sector (grandfathered) faces a choice:
 **Optimal strategy:** Don't extend Fil+ sectors during the transition if possible. Let them run at 10× until natural expiration. This is rational behavior, not an attack.
 
 **Bound on value:** The maximum "benefit" of holding a grandfathered 10× sector vs a 1× sector is:
-$$\text{Grandfathered\_Premium} = (10 - 1) \times r_{\text{base}} \times d_{\text{remaining}} = 9 \times 0.000910 \times d_{\text{remaining}}$$
+$$\text{GrandfatheredPremium} = (10 - 1) \times r_{\text{base}} \times d_{\text{remaining}} = 9 \times 0.000910 \times d_{\text{remaining}}$$
 
 At the start of transition, a Fil+ sector with 1 year remaining:
 
@@ -268,7 +268,7 @@ This value is the MAXIMUM "advantage" a grandfathered sector has over a new 1× 
 
 **Theorem 2 (Bounded quality arbitrage):** The total additional value capturable by all grandfathered sectors across the network, relative to the counterfactual of immediate VDWM=1, is bounded by:
 
-$$\text{Total\_Premium} \leq 9 \times r_{\text{CC}} \times \sum_{i} d_{\text{remaining},i}$$
+$$\text{TotalPremium} \leq 9 \times r_{\text{CC}} \times \sum_{i} d_{\text{remaining},i}$$
 
 where $r_{\text{CC}}$ is the CC sector daily reward and $d_{\text{remaining},i}$ is the remaining lifetime of each Fil+ sector.
 
@@ -296,7 +296,7 @@ A malicious notary issues large amounts of datacap to allied SPs just before or 
 
 Since the DDO migration, datacap issuance operates under strict constraints:
 1. **Allocations are SP-specific:** An allocation is made for a specific SP (client-provider pair)
-2. **Allocations have bounded expiration:** `MAXIMUM_VERIFIED_ALLOCATION_EXPIRATION` = 60 days
+2. **Allocations have bounded expiration:** max verified allocation expiration = 60 days
 3. **Allocations require on-chain claiming:** SP must seal data and call `ProveCommitSectors3` with the allocation ID
 4. **Notary throughput is bounded:** Each notary has a datacap budget reviewed quarterly
 
@@ -342,33 +342,33 @@ Therefore, for any epoch $e$ during transition: $V(e) \leq V(e \mid \text{status
 **Proof:**
 
 The Filecoin economic model has these state variables:
-- M(t): total minted supply = M_S(t) + M_B(t)
-- R(t): raw byte power
-- QAP(t): quality-adjusted power (depends on VDWM)
-- C(t): circulating supply
-- P(t): total pledge
-- Reserve(t): mining reserve balance
+- $M(t)$: total minted supply $= M_S(t) + M_B(t)$
+- $R(t)$: raw byte power
+- $\text{QAP}(t)$: quality-adjusted power (depends on VDWM)
+- $C(t)$: circulating supply
+- $P(t)$: total pledge
+- $\text{Reserve}(t)$: mining reserve balance
 
-The reserve burn sets Reserve(t) = 0 at the upgrade epoch. This affects:
-- Total supply: totalSupply -= Reserve (but Reserve was never in C(t))
-- C(t): **unchanged** — reserve is not part of circulating supply
-- M(t): **unchanged** — minting depends on θ(t), which depends on R(t), not Reserve
-- P(t): **unchanged** — pledge depends on C(t) and QAP(t), not Reserve
-- R(t): **unchanged** — storage power is physical, not affected by token supply
+The reserve burn sets $\text{Reserve}(t) = 0$ at the upgrade epoch. This affects:
+- Total supply: decreased by Reserve amount (but Reserve was never in $C(t)$)
+- $C(t)$: **unchanged** — reserve is not part of circulating supply
+- $M(t)$: **unchanged** — minting depends on $\theta(t)$, which depends on $R(t)$, not Reserve
+- $P(t)$: **unchanged** — pledge depends on $C(t)$ and $\text{QAP}(t)$, not Reserve
+- $R(t)$: **unchanged** — storage power is physical, not affected by token supply
 
 The VDWM transition changes:
-- QAP(t): decreases as VDWM interpolates from 10× to 1×
+- $\text{QAP}(t)$: decreases as VDWM interpolates from 10× to 1×
 - Reward distribution: shifts from Fil+ to CC sectors (zero-sum)
-- M(t): **unchanged** (proven in Phase 1)
-- C(t): **unchanged** (same daily issuance, same vesting)
-- R(t): **unchanged** (physical storage unaffected)
+- $M(t)$: **unchanged** (proven in Phase 1)
+- $C(t)$: **unchanged** (same daily issuance, same vesting)
+- $R(t)$: **unchanged** (physical storage unaffected)
 
 Cross-check: Is there any formula where both Reserve and VDWM appear?
 
-- Consensus pledge: `0.30 × C(t) × SectorQAP / max(Baseline, NetworkQAP)` — contains QAP but not Reserve
-- Storage pledge: `BR(t, 20) = f(reward_estimate, network_qap_estimate, qa_sector_power)` — no Reserve
-- Termination fee: `0.085 × IP` — depends on pledge, not Reserve
-- Minting: `M_S(t) + M_B(θ(R(t)))` — depends on RBP, not Reserve or QAP
+- Consensus pledge: $0.30 \times C(t) \times \text{SectorQAP} / \max(\text{Baseline}, \text{NetworkQAP})$ — contains QAP but not Reserve
+- Storage pledge: $\text{BR}(t, 20) = f(\text{RewardEstimate}, \text{NetworkQAP}, \text{SectorQAP})$ — no Reserve
+- Termination fee: $0.085 \times \text{IP}$ — depends on pledge, not Reserve
+- Minting: $M_S(t) + M_B(\theta(R(t)))$ — depends on RBP, not Reserve or QAP
 
 **No formula contains both variables. The changes are mathematically independent.** ∎
 
@@ -464,11 +464,11 @@ During the 12-month transition, QAP gradually decreases from 18.5 EiB to 2.17 Ei
 
 At any point during the transition, the 51% attack cost is:
 
-$$C_{\text{attack}}(e) = \frac{0.51 \times \text{QAP}(e)}{M_{\max}(e)} \times \text{pledge\_per\_unit}$$
+$$C_{\text{attack}}(e) = \frac{0.51 \times \text{QAP}(e)}{M_{\max}(e)} \times \text{PledgePerUnit}(e)$$
 
 Where $M_{\max}(e)$ is the maximum available multiplier at epoch $e$ (attacker commits Fil+ sectors for maximum leverage):
 
-$$M_{\max}(e) = \frac{\texttt{verified\_deal\_weight\_multiplier\_at}(e)}{\text{QBM}}$$
+$$M_{\max}(e) = \frac{\text{VDWM}(e)}{\text{QBM}}$$
 
 | Month | VDWM (eff.) | Network QAP (est.) | 51% Physical Cost |
 |---|---|---|---|
@@ -570,10 +570,10 @@ All five security properties are proven. No profitable attack vector exists. Con
 
 ## References
 
-- Filecoin Spec: Block Reward Minting (R̄, θ, M_B formulas)
+- Filecoin Spec: Block Reward Minting ($\bar{R}$, $\theta$, $M_B$ formulas)
 - Filecoin Spec: Miner Collaterals (IP, IPBase, AdditionalIP)
-- builtin-actors `monies.rs` (TERM_FEE_PLEDGE_MULTIPLE = 85/1000)
-- builtin-actors `policy.rs` (REWARD_VESTING_SPEC: 180 days)
+- builtin-actors `monies.rs` (`TERM_FEE_PLEDGE_MULTIPLE` = 85/1000)
+- builtin-actors `policy.rs` (`REWARD_VESTING_SPEC`: 180 days)
 - FIP-0052: Max sector lifetime 3.5 years
 - FIP-0076: DDO allocation constraints (60-day expiry)
 - FIP-0086: F3 fast finality (~30s)

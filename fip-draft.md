@@ -326,7 +326,7 @@ This proposal modifies the built-in storage miner actor and requires a network u
 
 ### Unit Tests
 
-1. **Multiplier interpolation** (code values → effective ratio = code_value / QBM):
+1. **Multiplier interpolation** (code values → effective ratio = `code_value / QBM`):
    - Before `TRANSITION_START`: returns 100 (effective 10×)
    - At `TRANSITION_START`: returns 100 (effective 10×)
    - At `TRANSITION_START + DURATION/2` (525,600 epochs): returns 55 (effective 5.5×)
@@ -485,7 +485,7 @@ The economic simulation, gas benchmarking, and security analysis were developed 
 
 ## References
 
-- [Filecoin Spec: Block Reward Minting](https://spec.filecoin.io/#section-systems.filecoin_token.block_reward_minting) — Defines M_S, M_B, θ, R̄
+- [Filecoin Spec: Block Reward Minting](https://spec.filecoin.io/#section-systems.filecoin_token.block_reward_minting) — Defines $M_S$, $M_B$, $\theta$, $\bar{R}$
 - [Filecoin Spec: Sector Quality](https://spec.filecoin.io/#section-systems.filecoin_mining.sector.sector-quality) — Defines QAP, VDWM, DWM, QBM
 - [Filecoin Spec: Miner Collaterals](https://spec.filecoin.io/#section-systems.filecoin_mining.miner_collaterals) — Defines initial pledge formula
 - [Filecoin Spec: Token Allocation](https://spec.filecoin.io/#section-systems.filecoin_token.token_allocation) — Defines mining reserve
