@@ -4,7 +4,7 @@
 
 **Simulation:** 12 named scenarios × 3,650 days + 210 parameter sweep × 5 checkpoints = 44,850 data points
 **Source code:** `sim/filecoin_econ_sim.cu` — validated against Filecoin spec math
-**Run date:** 2026-02-27
+**Chain state:** Epoch ~5,796,404 (Filfox API)
 
 ---
 

@@ -8,7 +8,7 @@ FIP-Daybreak adds **< 0.01% gas overhead** to any affected operation. WindowPoSt
 
 ## On-Chain Gas Measurements
 
-Source: Filfox API, epoch ~5,796,499 (2026-02-27).
+Source: Filfox API, epoch ~5,796,499.
 
 | Method | Batch Size | Gas Used | Calls `quality_for_weight()` |
 |---|---|---|---|
@@ -104,4 +104,4 @@ The `quality_for_weight()` function divides by QBM at the end:
 
 $$\text{Quality} = \frac{\text{WeightedSum} \ll 20}{\text{SectorSpaceTime} \times \text{QBM}}$$
 
-So effective multiplier $= \frac{\text{code\_value}}{\text{QBM}} = \frac{100}{10} = 10\times$. The interpolation transitions the code value $100 \to 10$, yielding effective $10\times \to 1\times$.
+So effective multiplier $= \frac{\text{CodeValue}}{\text{QBM}} = \frac{100}{10} = 10\times$. The interpolation transitions the code value $100 \to 10$, yielding effective $10\times \to 1\times$.
