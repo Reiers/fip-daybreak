@@ -114,7 +114,7 @@ With VDWM=10, a CC sector competes against Fil+ sectors holding 10× its apparen
 | **Total initial pledge** | **0.0673 FIL** | **0.0834 FIL** | +24% |
 | Annual ROI on pledge | 58% | 399% | **+6.9×** |
 
-The consensus pledge is unchanged because its denominator $\max(\text{Baseline}, \text{QAP})$ evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
+The consensus pledge is unchanged because its denominator $\max(Baseline, QAP)$ evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
 
 **Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from 58% to 399% annually.
 
@@ -132,7 +132,7 @@ The baseline function grows at 100% per year from an initial value of ~2.5 EiB:
 
 The network has never exceeded the baseline. The gap widens exponentially. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
 
-Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the baseline growth does not improve SP economics** — it actually increases consensus pledge because the denominator $\max(\text{Baseline}, \text{QAP})$ shrinks. We therefore propose leaving the baseline growth rate unchanged.
+Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the baseline growth does not improve SP economics** — it actually increases consensus pledge because the denominator $\max(Baseline, QAP)$ shrinks. We therefore propose leaving the baseline growth rate unchanged.
 
 ### Fil+ outcomes have diverged from intent
 
@@ -280,7 +280,7 @@ Counterintuitively, the growing baseline *helps* SP economics. Our simulation te
 | 50%/year | 0.01824 FIL | 0.0212 FIL | 984% |
 | 100%/year (current) | 0.01824 FIL | 0.0137 FIL | 1,518% |
 
-**Rewards are identical** across all growth rates (RBP << baseline in all cases). But pledge **increases** when the baseline shrinks, because $\text{ConsensusPledge} = 0.30 \times \text{CircSupply} \times \frac{\text{SectorQAP}}{\max(\text{Baseline}, \text{NetworkQAP})}$ — a smaller denominator means more pledge. The growing baseline keeps pledge manageable.
+**Rewards are identical** across all growth rates (RBP << baseline in all cases). But pledge **increases** when the baseline shrinks, because $ConsensusPledge = 0.30 \times CircSupply \times \frac{SectorQAP}{\max(Baseline, NetworkQAP)}$ — a smaller denominator means more pledge. The growing baseline keeps pledge manageable.
 
 ### Why combine VDWM reduction with mining reserve burn?
 
@@ -383,7 +383,7 @@ An attacker onboarding sectors during the transition and terminating to extract 
 ### Quality arbitrage is bounded and diminishing
 
 Under grandfathering, existing Fil+ sectors retain 10× quality until expiry. The maximum premium is:
-$$\text{Premium} \leq 9 \times \text{CC\_reward\_rate} \times \text{remaining\_sector\_days} \to 0$$
+$$Premium \leq 9 \times CCRewardRate \times RemainingSectorDays \to 0$$
 All grandfathered sectors expire within 3.5 years (FIP-0052). This is the cost of a smooth transition — it is the gradual elimination of existing redistribution, not new value creation.
 
 ### Mining reserve burn has no protocol interaction
