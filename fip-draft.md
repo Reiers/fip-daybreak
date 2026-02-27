@@ -22,7 +22,7 @@ Gradually reduce the Verified Deal Weight Multiplier (VDWM) from 10× to 1× ove
 
 ## Abstract
 
-FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~19.5 EiB in mid-2022 and has since declined to ~2.1 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
+FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~17 EiB in mid-2022 and has since declined to ~2.1 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
 
 This FIP proposes two changes:
 
@@ -142,7 +142,7 @@ Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the 
 
 FIP-0003 was designed to "incentivize useful storage" via a quality multiplier for verified data. After five years of operation:
 
-1. **RBP has declined**, not increased — from a peak of ~19.5 EiB (mid-2022) to ~2.1 EiB today.
+1. **RBP has declined**, not increased — from a peak of ~17 EiB (mid-2022, per [FIP-0080](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0080.md)) to ~2.1 EiB today.
 2. **Independent community analyses** report significant concerns about data retrievability for Fil+ sectors (see [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) and linked audit reports).
 3. **A permissioned notary layer** determines which storage providers earn enhanced rewards, creating centralization pressure that is in tension with Filecoin's [stated mission](https://github.com/filecoin-project/FIPs/blob/master/mission.md) of decentralization.
 4. **Block rewards per TiB have declined significantly** after Fil+ adoption, as the subsidy creates a competitive dynamic where "when everyone gets 10×, nobody does."
