@@ -22,7 +22,7 @@ Gradually reduce the Verified Deal Weight Multiplier (VDWM) from 10× to 1× ove
 
 ## Abstract
 
-FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~19.5 EiB in mid-2022 and has since declined to 2.17 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
+FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~19.5 EiB in mid-2022 and has since declined to ~2.1 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
 
 This FIP proposes two changes:
 
@@ -41,8 +41,8 @@ The question of whether the 10× quality multiplier helps or harms Filecoin is n
 | Date | Event | Status |
 |------|-------|--------|
 | Oct 2020 | **FIP-0003** introduces Fil+ and the 10× VDWM | Active |
-| Apr 2022 | **FIP-0036** (Sector Duration Multiplier) proposes alternative incentive mechanism | Rejected — 1,000+ comments, strong SP opposition |
-| Jan 2023 | **FIP-0056** (SDM v2) attempts to revive duration-based multiplier | Rejected — same opposition |
+| Jul 2022 | **FIP-0036** (Sector Duration Multiplier) proposes alternative incentive mechanism | Rejected — 1,000+ comments, strong SP opposition |
+| Dec 2022 | **FIP-0056** (SDM v2) attempts to revive duration-based multiplier | Rejected — same opposition |
 | Aug 2023 | **FIP-0080** (Phasing Out Fil+) proposes setting VDWM to 1× for new sectors | Draft — 358+ comments, 2.5 years without advancing |
 | Oct 2023 | **FIP-0078** (Remove DataCap and QA) proposes phasing out the Fil+ program entirely | Draft — stalled |
 | Jul 2024 | **FIP-0093** (Set Mining Reserve to Zero) proposes burning the reserve | Draft — ~20 months stalled despite editor approval |
@@ -65,7 +65,9 @@ The critical definition from the spec:
 
 > `R̄(t) := min{b(t), R(t)}` where `R(t)` is "the instantaneous network raw-byte power (the total amount of bytes among all active sectors)."
 
-**`R(t)` is the sum of physical sector sizes.** It is unaffected by quality multipliers. Changing the VDWM from 10 to 1 leaves `R(t)` unchanged → `R̄_Σ(t)` unchanged → `θ(t)` unchanged → total minted supply `M(t) = M_S(t) + M_B(t)` unchanged.
+**`R(t)` is the sum of physical sector sizes.** It is unaffected by quality multipliers. Changing the VDWM from 10× to 1× leaves `R(t)` unchanged → `R̄_Σ(t)` unchanged → `θ(t)` unchanged → total minted supply `M(t) = M_S(t) + M_B(t)` unchanged.
+
+Note: In the builtin-actors source code, `QUALITY_BASE_MULTIPLIER` (QBM) = 10, `DEAL_WEIGHT_MULTIPLIER` (DWM) = 10, and `VERIFIED_DEAL_WEIGHT_MULTIPLIER` (VDWM) = 100. The effective quality ratio is code_value / QBM, so regular deals already have effective 1× quality (10/10). Only verified deals get enhanced quality (100/10 = 10×). This FIP sets VDWM to 10 (code value), making it equal to QBM and DWM — all sector types become 1× effective.
 
 **The 10× multiplier is a pure redistribution mechanism.** It does not grow the reward pool — it transfers rewards from CC sectors to Fil+ sectors through inflated QAP.
 
@@ -73,7 +75,7 @@ The critical definition from the spec:
 
 This result was validated analytically and by numerical simulation. The simulation models 12 scenarios across 10-year forward projections from the current network state.
 
-- **Source code**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim) (CUDA C++)
+- **Source code**: [github.com/Reiers/fip-daybreak/sim](https://github.com/Reiers/fip-daybreak/tree/main/sim) (CUDA C++)
 - **Hardware**: NVIDIA RTX 5080 GPU (Blackwell architecture)
 - **Methodology**: Computed cumulative capped RBP from genesis using 10 historical data points, derived `θ(t)` per spec formula, projected forward under each scenario.
 - **Full dataset**: 12 scenarios × 3,650 daily data points + 210-parameter sweep = 44,850 data points
@@ -82,14 +84,16 @@ This result was validated analytically and by numerical simulation. The simulati
 
 | Parameter | Value | Source |
 |---|---|---|
-| Raw Byte Power (RBP) | 2.17 EiB | Filfox API: `totalRawBytePower` |
-| Quality-Adjusted Power (QAP) | 18.50 EiB | Filfox API: `totalQualityAdjPower` |
+| Raw Byte Power (RBP) | 2.12 EiB | Filfox API: `totalRawBytePower` (2,444,690,677,599,043,584 bytes) |
+| Quality-Adjusted Power (QAP) | 18.04 EiB | Filfox API: `totalQualityAdjPower` (20,797,646,101,771,550,720 bytes) |
 | QAP / RBP ratio | 8.51× | Derived |
 | Circulating Supply | 832.5M FIL | Filfox API: `circulatingSupply` |
 | Daily Mined | 66,249 FIL | Filfox API: `dailyCoinsMined` |
-| Baseline (computed) | ~114.5 EiB | `b₀ · e^{g·t}`, b₀ = 2,888,888,880,000,000,000 bytes |
+| Baseline (computed) | 114.5 EiB | `b₀ · e^{g·t}`, b₀ = 2,888,888,880,000,000,000 bytes |
 | Active Miners | 923 | Filfox API: `activeMiners` |
-| Mining Reserve (f090) | 282.9M FIL | Filfox API: address balance |
+| Mining Reserve (f090) | 282.9M FIL | Filfox API: `f090` address balance |
+
+*Note: Network state values change every epoch (~30 seconds). All derived calculations in this FIP use the exact byte values above. Minor differences from rounded EiB figures are due to rounding.*
 
 **Key result — daily issuance is invariant to VDWM:**
 
@@ -108,15 +112,15 @@ With VDWM=10, a CC sector competes against Fil+ sectors holding 10× its apparen
 
 | Metric | Current (VDWM=10) | After Daybreak (VDWM=1) | Change |
 |---|---|---|---|
-| Daily reward | 0.000107 FIL | 0.000910 FIL | **+8.5×** |
-| Storage pledge (20 days) | 0.00213 FIL | 0.01820 FIL | +8.5× |
-| Consensus pledge | 0.06517 FIL | 0.06517 FIL | **unchanged** |
-| **Total initial pledge** | **0.0673 FIL** | **0.0834 FIL** | +24% |
-| Annual ROI on pledge | 58% | 399% | **+6.9×** |
+| Daily reward | 0.000109 FIL | 0.000931 FIL | **+8.5×** |
+| Storage pledge (20 days) | 0.00219 FIL | 0.01862 FIL | +8.5× |
+| Consensus pledge | 0.06500 FIL | 0.06500 FIL | **unchanged** |
+| **Total initial pledge** | **0.0672 FIL** | **0.0836 FIL** | +24% |
+| Annual ROI on pledge | 59% | 406% | **+6.9×** |
 
-The consensus pledge is unchanged because its denominator `max(baseline, QAP)` evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
+The consensus pledge is unchanged because its denominator `max(baseline, QAP)` evaluates to the baseline in both cases (114.5 EiB >> 18.04 EiB >> 2.12 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
 
-**Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from 58% to 399% annually.
+**Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from ~59% to ~406% annually.
 
 ### The baseline gap is structural
 
@@ -124,8 +128,8 @@ The baseline function grows at 100% per year from an initial value of ~2.5 EiB:
 
 | Metric | Value |
 |---|---|
-| Current baseline | ~114.5 EiB |
-| Current RBP | 2.17 EiB (**1.9% of baseline**) |
+| Current baseline | 114.5 EiB |
+| Current RBP | 2.12 EiB (**1.85% of baseline**) |
 | Effective network time θ | ~3.34 years (vs 5.5 years actual) |
 | Baseline minted (of 770M allocation) | ~246M FIL (32%) |
 | Baseline rewards effectively deferred | ~524M FIL (68%) |
@@ -138,7 +142,7 @@ Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the 
 
 FIP-0003 was designed to "incentivize useful storage" via a quality multiplier for verified data. After five years of operation:
 
-1. **RBP has declined**, not increased — from a peak of ~19.5 EiB (mid-2022) to 2.17 EiB today.
+1. **RBP has declined**, not increased — from a peak of ~19.5 EiB (mid-2022) to ~2.1 EiB today.
 2. **Independent community analyses** report significant concerns about data retrievability for Fil+ sectors (see [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) and linked audit reports).
 3. **A permissioned notary layer** determines which storage providers earn enhanced rewards, creating centralization pressure that is in tension with Filecoin's [stated mission](https://github.com/filecoin-project/FIPs/blob/master/mission.md) of decentralization.
 4. **Block rewards per TiB have declined significantly** after Fil+ adoption, as the subsidy creates a competitive dynamic where "when everyone gets 10×, nobody does."
@@ -257,11 +261,11 @@ Upon completion of the VDWM transition (12 months after activation), the quality
 
 ### Why a 12-month linear transition?
 
-| Approach | Year 1 CC Reward | Year 1 Pledge | Year 1 ROI |
+| Approach | End-State CC Reward | End-State Pledge | End-State ROI |
 |---|---|---|---|
-| Immediate (VDWM 10→1 at activation) | 0.000910 FIL/day | 0.0834 FIL | 399% |
-| 12-month gradual (this FIP) | 0.000910 FIL/day *at completion* | 0.0834 FIL *at completion* | 399% *at completion* |
-| 3-year gradual | 0.000210 FIL/day at year 1 | 0.037 FIL | 146% |
+| Immediate (VDWM 10→1 at activation) | 0.000931 FIL/day | 0.0836 FIL | ~406% |
+| 12-month gradual (this FIP) | 0.000931 FIL/day | 0.0836 FIL | ~406% |
+| 3-year gradual | 0.000931 FIL/day (at completion) | 0.0836 FIL | ~406% |
 
 The 12-month transition achieves the same end-state as immediate removal while providing:
 1. Time for storage providers to adjust operational strategies.
@@ -356,7 +360,7 @@ This proposal modifies the built-in storage miner actor and requires a network u
 
 ## Security Considerations
 
-A comprehensive formal security analysis accompanies this FIP ([full analysis](https://github.com/Reiers/super-fip/blob/master/security-analysis.md)). Five attack vectors were analyzed with quantitative bounds:
+A comprehensive formal security analysis accompanies this FIP ([full analysis](https://github.com/Reiers/fip-daybreak/blob/main/security-analysis.md)). Five attack vectors were analyzed with quantitative bounds:
 
 ### Consensus security improves
 
@@ -364,11 +368,11 @@ The minimum physical cost of a 51% consensus attack **increases by 17.6%**:
 
 | Metric | Current (VDWM=10) | After Daybreak (VDWM=1) |
 |---|---|---|
-| Minimum physical storage for 51% | 0.944 EiB (via datacap) | 1.107 EiB (physical only) |
-| Minimum pledge capital for 51% | ~$3.9M | ~$4.5M |
-| Virtual (non-physical) consensus power | ~8.5 EiB (56% of QAP) | 0 |
+| Minimum physical storage for 51% | 0.92 EiB (via datacap) | 1.08 EiB (physical only) |
+| Minimum pledge capital for 51% | ~$3.8M | ~$4.4M |
+| Virtual (non-physical) consensus power | ~8.5 EiB (~47% of QAP) | 0 |
 
-Today, an attacker with datacap access can acquire 51% of consensus power with only 0.944 EiB of physical storage — the 10× multiplier supplies the rest virtually. After Daybreak, 100% of consensus power is physically backed.
+Today, an attacker with datacap access can acquire 51% of consensus power with only ~0.92 EiB of physical storage — the 10× multiplier supplies the rest virtually. After Daybreak, 100% of consensus power is physically backed.
 
 F3 fast finality ([FIP-0086](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)) provides an additional safety margin by reducing the finality window from 7.5 hours to ~30 seconds.
 
@@ -413,15 +417,25 @@ Daybreak leverages existing security mechanisms (pledge, vesting, termination fe
 
 ### Transition timeline
 
-| Month | Effective VDWM | CC Reward (approx.) | Notes |
-|-------|---------------|-------------------|-------|
-| 0 | 10× | 0.000107 FIL/day | Status quo |
-| 3 | 7.75× | 0.000138 FIL/day | Minimal change |
-| 6 | 5.5× | 0.000195 FIL/day | CC reward ~doubles |
-| 9 | 3.25× | 0.000339 FIL/day | Fil+ premium eroding |
-| 12 | 1× | 0.000910 FIL/day | All sectors equal |
+| Month | Code Value | Effective VDWM | CC Reward (approx.) | Notes |
+|-------|-----------|---------------|-------------------|-------|
+| 0 | 100 | 10.0× | 0.000109 FIL/day | Status quo |
+| 3 | 77 | 7.7× | 0.000141 FIL/day | Gradual shift begins |
+| 6 | 55 | 5.5× | 0.000196 FIL/day | CC reward ~doubles |
+| 9 | 32 | 3.2× | 0.000328 FIL/day | Fil+ premium eroding |
+| 12 | 10 | 1.0× | 0.000931 FIL/day | All sectors equal |
+
+*Code values shown are the output of `verified_deal_weight_multiplier_at()` using integer division. Effective VDWM = code value / QBM (10).*
 
 This gradual curve allows market participants to adjust positions. SPs dependent on Fil+ subsidies have 12 months to transition to alternative revenue models: market-rate storage, FVM-based incentive contracts, FOC/PDP warm storage services, or other application-layer mechanisms.
+
+### Anticipated concerns
+
+**"This will cause an SP exodus / power drop."** Some short-term power decline is possible as Fil+ gaming operations wind down. However, the improved economics for CC sectors (8.5× revenue) create a strong incentive for honest SPs to stay and for new SPs to join. CryptoEconLab's own analysis ([Resilience of the Filecoin Network](https://medium.com/cryptoeconlab/resilience-of-the-filecoin-network-d7861ee9986a)) demonstrates the protocol's resilience properties under power declines.
+
+**"The security budget will decrease."** The formal security analysis (Section: Security Considerations) proves the opposite — consensus security *increases* by 17.5% because all power becomes physically backed. Virtual power through datacap is eliminated.
+
+**"CryptoEconLab hasn't reviewed this."** All simulation code, data, and proofs are published for independent verification. The mathematical claims derive from the Filecoin protocol specification and are reproducible by anyone.
 
 ## Product Considerations
 
@@ -463,6 +477,24 @@ The code change adds approximately 200–350 gas per invocation of `quality_for_
 | `CronTick` | ~10–50,000,000 | 0 | 0% (grandfathering: no quality recalculation) |
 | State migration (reserve burn) | — | ~2,000,000 | One-time |
 
+### Success criteria
+
+The following metrics should be monitored after activation:
+
+| Metric | Expected Direction | Monitoring |
+|---|---|---|
+| CC sector ROI | Increasing (toward ~400% annual) | Filfox, Starboard |
+| New SP onboarding | Increasing (lower barrier to entry) | Filfox `activeMiners` |
+| RBP | Stable or increasing (improved CC economics) | Filfox `totalRawBytePower` |
+| Total daily issuance | Unchanged (mathematical invariant) | Filfox `dailyCoinsMined` |
+| WindowPoSt fault rate | Unchanged (not affected by this FIP) | Filfox/Spacescope |
+
+**Failure signals**: If RBP declines more than 30% within 6 months of activation with no corresponding increase in new SP onboarding, the transition timeline may warrant community review — though the 12-month gradual mechanism provides a natural buffer for adaptation.
+
+### Rollback considerations
+
+The VDWM transition is implemented as an epoch-aware function. In a hypothetical emergency scenario, a subsequent network upgrade could modify the function to halt or reverse the interpolation. The grandfathering approach means no existing sector state needs to be unwound. The reserve burn, however, is irreversible by design (same as gas burns).
+
 ### Implementation tracking
 
 | Repository | PR | Status |
@@ -479,8 +511,7 @@ This FIP builds on the work of many community members who have advocated for eco
 
 The economic simulation, gas benchmarking, and security analysis were developed with the assistance of AI tools (Anthropic Claude) and GPU compute (NVIDIA RTX 5080) to validate mathematical claims against the Filecoin protocol specification and on-chain data. All simulation source code, data, and analysis are published for independent verification:
 
-- **Simulation**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim)
-- **Analysis and security proofs**: [github.com/Reiers/super-fip](https://github.com/Reiers/super-fip)
+- **All materials (simulation, analysis, security proofs)**: [github.com/Reiers/fip-daybreak](https://github.com/Reiers/fip-daybreak)
 
 ## References
 
