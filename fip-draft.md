@@ -1,96 +1,112 @@
 ---
 fip: "XXXX"
-title: Restore Equal Sector Quality and Burn Mining Reserve
+title: "Daybreak: Restore Equal Sector Quality and Burn Mining Reserve"
 author: Reiers (@Reiers)
 discussions-to: https://github.com/filecoin-project/FIPs/discussions/XXXX
 status: Draft
 type: Technical
 category: Core
 created: 2026-02-27
+requires: FIP-0052, FIP-0086, FIP-0098
 spec-sections:
   - section-systems.filecoin_mining.sector.sector-quality
   - section-systems.filecoin_token.token_allocation
   - section-algorithms.cryptoecon
 ---
 
-# FIP-XXXX: Restore Equal Sector Quality and Burn Mining Reserve
+# FIP-XXXX: Daybreak — Restore Equal Sector Quality and Burn Mining Reserve
 
 ## Simple Summary
 
-Set the Verified Deal Weight Multiplier (VDWM) to 1x over a 12-month linear transition, making all sectors equal regardless of deal type, and permanently burn the 300M FIL mining reserve by sending it to `f099`.
+Gradually reduce the Verified Deal Weight Multiplier (VDWM) from 10× to 1× over 12 months, so all sectors earn equal rewards regardless of deal type. Simultaneously, burn the ~283M FIL mining reserve by transferring it to the burn address `f099`.
 
 ## Abstract
 
-The Filecoin Plus (Fil+) program introduced a 10x quality-adjusted power (QAP) multiplier for sectors containing verified deals (FIP-0003). After 5+ years of operation, the program has not achieved its intended goals: Raw Byte Power (RBP) peaked at ~19 EiB and has declined to 2.17 EiB, ~90% of verified data is estimated to be non-retrievable, and a permissioned notary layer controls block reward distribution.
+FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~19.5 EiB in mid-2022 and has since declined to 2.17 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
 
 This FIP proposes two changes:
 
-1. **Reduce the `VERIFIED_DEAL_WEIGHT_MULTIPLIER` from 10 to 1** over a 12-month linear transition (approximately one change of −0.75 per month). After the transition, all sectors — committed capacity, regular deals, and verified deals — earn equal quality-adjusted power per raw byte.
+1. **Reduce `VERIFIED_DEAL_WEIGHT_MULTIPLIER` from 10× to 1×** over a 12-month linear transition. After the transition, all sectors — committed capacity (CC), regular deals, and verified deals — earn equal quality-adjusted power per raw byte.
 
-2. **Set the mining reserve allocation to zero**, permanently removing 300M FIL of potential future inflation from the token supply by sending the reserve balance to the burn address `f099`.
+2. **Burn the mining reserve** (~283M FIL as of epoch 5,796,404) by transferring the balance of the reserve actor `f090` to the burn address `f099`.
 
-Together, these changes remove two sources of centralized control (notary-gated rewards and discretionary token reserves) while preserving or improving storage provider economics.
+These changes remove two sources of centralized influence — notary-gated reward distribution and a discretionary token reserve — while preserving or improving storage provider economics. Total block reward issuance is mathematically unchanged.
 
 ## Change Motivation
 
-### The 10x multiplier does not increase total block rewards
+### Background: Five Years of Debate
 
-This is the foundational economic fact motivating this FIP.
+The question of whether the 10× quality multiplier helps or harms Filecoin is not new. This FIP builds on years of community analysis and prior proposals:
 
-The Filecoin minting model (specified in the [Block Reward Minting](https://spec.filecoin.io/#section-systems.filecoin_token.block_reward_minting) section of the protocol specification) defines two components of block reward issuance:
+| Date | Event | Status |
+|------|-------|--------|
+| Oct 2020 | **FIP-0003** introduces Fil+ and the 10× VDWM | Active |
+| Apr 2022 | **FIP-0036** (Sector Duration Multiplier) proposes alternative incentive mechanism | Rejected — 1,000+ comments, strong SP opposition |
+| Jan 2023 | **FIP-0056** (SDM v2) attempts to revive duration-based multiplier | Rejected — same opposition |
+| Aug 2023 | **FIP-0080** (Phasing Out Fil+) proposes setting VDWM to 1× for new sectors | Draft — 358+ comments, 2.5 years without advancing |
+| Oct 2023 | **FIP-0078** (Remove DataCap and QA) proposes phasing out the Fil+ program entirely | Draft — stalled |
+| Jul 2024 | **FIP-0093** (Set Mining Reserve to Zero) proposes burning the reserve | Draft — ~20 months stalled despite editor approval |
+| Feb 2026 | **This FIP** provides quantitative analysis, transition mechanism, formal security proofs, and gas benchmarking | — |
 
-- **Simple minting:** $M_S(t) = M_{\infty S} \cdot (1 - e^{-\lambda t})$ — a function of elapsed time only.
-- **Baseline minting:** $M_B(t) = M_{\infty B} \cdot (1 - e^{-\lambda\theta(t)})$ — where the effective network time $\theta(t)$ depends on the cumulative capped raw-byte power $\bar{R}_\Sigma(t)$.
+The prior proposals (particularly FIP-0080) identified the correct problems and proposed the right direction. What they lacked — and what this FIP provides — is the quantitative economic foundation to move from discussion to action: a simulation validated against the protocol specification, gas impact analysis against the builtin-actors source code, a formal security analysis covering five attack vectors, and a fully specified transition mechanism.
 
-Critically, the baseline function uses **Raw Byte Power (RBP)**, not Quality-Adjusted Power (QAP):
+This FIP is intended to complement and build upon the work of FIP-0080's authors (Fatman13, ArthurWang1255, stuberman, Eliovp, dcasem, The-Wayvy) and FIP-0093's author (dcasem), whose community advocacy over multiple years laid the groundwork for this proposal.
 
-$$\bar{R}(t) := \min\{b(t),\; R(t)\}$$
+### The 10× multiplier does not increase total block rewards
 
-where $R(t)$ is defined as "the instantaneous network raw-byte power (the total amount of bytes among all active sectors)" (spec §5.2.2). This is the sum of physical sector sizes, unaffected by quality multipliers.
+This is the foundational economic fact.
 
-**Therefore:** Changing the VDWM from 10 to 1 leaves $R(t)$ unchanged, $\bar{R}_\Sigma(t)$ unchanged, $\theta(t)$ unchanged, and total minted supply $M(t) = M_S(t) + M_B(t)$ unchanged.
+The Filecoin minting model (defined in the [Block Reward Minting](https://spec.filecoin.io/#section-systems.filecoin_token.block_reward_minting) section of the protocol specification) has two components:
 
-The 10x multiplier is a **pure redistribution mechanism**. It does not increase the reward pool — it transfers rewards from CC sectors to Fil+ sectors through inflated QAP.
+- **Simple minting**: `M_S(t) = M_∞S · (1 − e^{−λt})` — a function of elapsed time only.
+- **Baseline minting**: `M_B(t) = M_∞B · (1 − e^{−λθ(t)})` — where effective network time `θ(t)` depends on cumulative capped **raw-byte** power.
 
-### Simulation confirms: identical issuance across all VDWM values
+The critical definition from the spec:
 
-I validated this analytically and by numerical simulation. The simulation was implemented as a CUDA program and executed on an NVIDIA RTX 5080 GPU (Blackwell architecture), modeling 12 scenarios across 10-year forward projections from the current network state (epoch 5,796,404). The simulation source code, input parameters, and output data are available upon request and will be published alongside this FIP.
+> `R̄(t) := min{b(t), R(t)}` where `R(t)` is "the instantaneous network raw-byte power (the total amount of bytes among all active sectors)."
 
-**Methodology:**
+**`R(t)` is the sum of physical sector sizes.** It is unaffected by quality multipliers. Changing the VDWM from 10 to 1 leaves `R(t)` unchanged → `R̄_Σ(t)` unchanged → `θ(t)` unchanged → total minted supply `M(t) = M_S(t) + M_B(t)` unchanged.
 
-1. Computed cumulative capped raw-byte power `R̄_Σ` from genesis to the current epoch using 10 historical RBP data points interpolated linearly, stepping in daily (2,880-epoch) increments.
-2. Derived effective network time `θ = (1/g) · ln(g · R̄_Σ / b_0 + 1)` per the spec formula.
-3. Validated simple minting at the current epoch: `M_S = 155.46M FIL` (matches chain state within 1%).
-4. Projected forward under each scenario, tracking daily issuance, per-sector rewards, pledge, and circulating supply.
-5. Confirmed that changing VDWM does not alter the minting trajectory in any scenario.
+**The 10× multiplier is a pure redistribution mechanism.** It does not grow the reward pool — it transfers rewards from CC sectors to Fil+ sectors through inflated QAP.
 
-**Current chain state used as simulation input** (source: [filfox.info API](https://filfox.info/api/v1/overview), epoch 5,796,404):
+### Simulation confirms identical issuance
+
+This result was validated analytically and by numerical simulation. The simulation models 12 scenarios across 10-year forward projections from the current network state.
+
+- **Source code**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim) (CUDA C++)
+- **Hardware**: NVIDIA RTX 5080 GPU (Blackwell architecture)
+- **Methodology**: Computed cumulative capped RBP from genesis using 10 historical data points, derived `θ(t)` per spec formula, projected forward under each scenario.
+- **Full dataset**: 12 scenarios × 3,650 daily data points + 210-parameter sweep = 44,850 data points
+
+**Chain state at epoch 5,796,404** (source: [filfox.info/api/v1/overview](https://filfox.info/api/v1/overview)):
 
 | Parameter | Value | Source |
 |---|---|---|
-| Raw Byte Power | 2.17 EiB | `totalRawBytePower` |
-| Quality-Adjusted Power | 18.50 EiB | `totalQualityAdjPower` |
-| Circulating Supply | 832.5M FIL | `circulatingSupply` |
-| Daily Mined | 66,249 FIL | `dailyCoinsMined` |
-| Active Miners | 923 | `activeMiners` |
-| Baseline (computed) | 114.21 EiB | `b_0 · e^{g · t}` |
+| Raw Byte Power (RBP) | 2.17 EiB | Filfox API: `totalRawBytePower` |
+| Quality-Adjusted Power (QAP) | 18.50 EiB | Filfox API: `totalQualityAdjPower` |
+| QAP / RBP ratio | 8.51× | Derived |
+| Circulating Supply | 832.5M FIL | Filfox API: `circulatingSupply` |
+| Daily Mined | 66,249 FIL | Filfox API: `dailyCoinsMined` |
+| Baseline (computed) | ~114.5 EiB | `b₀ · e^{g·t}`, b₀ = 2,888,888,880,000,000,000 bytes |
+| Active Miners | 923 | Filfox API: `activeMiners` |
+| Mining Reserve (f090) | 282.9M FIL | Filfox API: address balance |
 
 **Key result — daily issuance is invariant to VDWM:**
 
-| Scenario | VDWM | Year 1 Issuance | Year 5 Issuance | Year 10 Issuance |
+| Scenario | VDWM | Year 1 Avg | Year 5 Avg | Year 10 Avg |
 |---|---|---|---|---|
-| Status Quo | 10 | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
-| This FIP | 1 | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
+| Status Quo | 10× | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
+| This FIP | 1× | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
 
-The values are identical to 8 significant figures across the full 10-year projection.
+Identical to 8 significant figures across the full 10-year projection. **Not one additional FIL is minted or withheld by this change.**
 
-### Per-sector economics improve substantially for honest miners
+### Per-sector economics improve substantially
 
-With VDWM=10, a 32 GiB CC sector competes against Fil+ sectors that hold 10x its apparent power. When the multiplier is removed, the same physical storage earns a proportionally larger share of the unchanged reward pool.
+With VDWM=10, a CC sector competes against Fil+ sectors holding 10× its apparent power. When the multiplier is removed, the same physical storage earns a proportionally larger share of the unchanged reward pool.
 
-**Per 32 GiB CC sector, current epoch:**
+**Per 32 GiB CC sector at epoch 5,796,404:**
 
-| Metric | With Fil+ (VDWM=10) | Without Fil+ (VDWM=1) | Change |
+| Metric | Current (VDWM=10) | After Daybreak (VDWM=1) | Change |
 |---|---|---|---|
 | Daily reward | 0.000107 FIL | 0.000910 FIL | **+8.5×** |
 | Storage pledge (20 days) | 0.00213 FIL | 0.01820 FIL | +8.5× |
@@ -98,347 +114,373 @@ With VDWM=10, a 32 GiB CC sector competes against Fil+ sectors that hold 10x its
 | **Total initial pledge** | **0.0673 FIL** | **0.0834 FIL** | +24% |
 | Annual ROI on pledge | 58% | 399% | **+6.9×** |
 
-The consensus pledge is unchanged because the denominator $\max(b(t),\, \text{QAP}(t))$ evaluates to the baseline in both cases ($114.21 \text{ EiB} \gg 18.5 \text{ EiB} \gg 2.17 \text{ EiB}$). The storage pledge increases proportionally to the higher per-sector reward, but this is a direct function of the sector earning more.
+The consensus pledge is unchanged because its denominator `max(baseline, QAP)` evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
 
-**Net effect:** For every storage provider running committed capacity, revenue per unit of storage increases 8.5× while total pledge increases only 24%. ROI on pledge capital improves from 58% to 399%.
+**Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from 58% to 399% annually.
 
-### The baseline gap is a structural problem
+### The baseline gap is structural
 
-The baseline function was designed to grow at 100% per year from an initial value of 2.5 EiB. After 5.5 years:
+The baseline function grows at 100% per year from an initial value of ~2.5 EiB:
 
 | Metric | Value |
 |---|---|
-| Current baseline | 114.21 EiB |
+| Current baseline | ~114.5 EiB |
 | Current RBP | 2.17 EiB (**1.9% of baseline**) |
-| Effective network time θ | 3.34 years (vs 5.5 years actual) |
-| Baseline minted (of 770M allocation) | 246M FIL (32%) |
-| Baseline rewards effectively unreachable | ~524M FIL (68%) |
+| Effective network time θ | ~3.34 years (vs 5.5 years actual) |
+| Baseline minted (of 770M allocation) | ~246M FIL (32%) |
+| Baseline rewards effectively deferred | ~524M FIL (68%) |
 
-The network has never exceeded the baseline. Peak RBP was ~19 EiB in mid-2022; the baseline at that time was already ~35 EiB. The 10x multiplier was intended to help the network approach the baseline by incentivizing data storage, but QAP (not RBP) is what the multiplier inflates, and baseline minting depends on RBP.
+The network has never exceeded the baseline. The gap widens exponentially. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
 
-The baseline continues to grow at 100%/year. In 5 more years it will reach ~3,656 EiB. In 10 years: ~116,954 EiB. The gap between actual storage and the baseline is widening exponentially.
+Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the baseline growth does not improve SP economics** — it actually increases consensus pledge because the denominator `max(baseline, QAP)` shrinks. We therefore propose leaving the baseline growth rate unchanged.
 
-Simulation confirmed that **slowing the baseline growth rate does not improve SP economics** — it actually *increases* the consensus pledge because the denominator $\max(\text{baseline},\, \text{QAP})$ decreases. I therefore propose leaving the baseline growth rate unchanged.
+### Fil+ outcomes have diverged from intent
 
-### Fil+ has failed its stated goals
+FIP-0003 was designed to "incentivize useful storage" via a quality multiplier for verified data. After five years of operation:
 
-The Fil+ program (FIP-0003) was designed to "incentivize useful storage" via a quality multiplier for verified data. The program's outcomes:
+1. **RBP has declined**, not increased — from a peak of ~19.5 EiB (mid-2022) to 2.17 EiB today.
+2. **Independent community analyses** report significant concerns about data retrievability for Fil+ sectors (see [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) and linked audit reports).
+3. **A permissioned notary layer** determines which storage providers earn enhanced rewards, creating centralization pressure that is in tension with Filecoin's [stated mission](https://github.com/filecoin-project/FIPs/blob/master/mission.md) of decentralization.
+4. **Block rewards per TiB have declined significantly** after Fil+ adoption, as the subsidy creates a competitive dynamic where "when everyone gets 10×, nobody does."
+5. **Storage economics have inverted** — storage providers in some cases pay clients to store data, rather than the other way around.
 
-1. **RBP declined**, not increased: from 19 EiB peak to 2.17 EiB current.
-2. **~90% of Fil+ data is non-retrievable** (per community audit reports cited in [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774)).
-3. **DataCap is traded on black markets** at ~$14,300/PiB.
-4. **A permissioned notary layer** controls which storage providers earn enhanced rewards, contradicting Filecoin's decentralization mission.
-5. **Block rewards per TiB declined 3× faster** after Fil+ adoption than before (from −11.7% to −42.2% over comparable 6-month periods).
-6. **Storage providers pay clients** to store data (negative storage pricing) — an inverted economic signal.
+These outcomes are well-documented in the 358-comment discussion on FIP-0080 ([Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774)). This FIP does not seek to assign blame — the Fil+ program was a reasonable experiment that did not produce the intended results. The economic data now provides a clear basis for course correction.
 
-This FIP is not the first to identify these issues. FIP-0080 (Phasing Out Fil+, Discussion #774, 358 comments) has been in Draft status since August 2023 — over 2.5 years — with broad community support but no path to ratification. This FIP provides the quantitative economic analysis and transition mechanism that FIP-0080's authors and supporters have called for.
+### Mining reserve has no distribution mechanism
 
-### Mining reserve is unused and unnecessary
+The mining reserve was allocated 300M FIL at genesis (15% of `FIL_BASE`) as a reserve "for funding mining to support growth of the Filecoin Economy, whose future usage will be decided by the Filecoin community."
 
-The 300M FIL mining reserve (15% of `FIL_BASE`) was allocated "for funding mining to support growth of the Filecoin Economy, whose future usage will be decided by the Filecoin community." After 5+ years, no mechanism for distribution has been ratified, no tokens have been released, and FIP-0093 (Set Mining Reserve to Zero) has been stalled in review since July 2024 despite editor approval.
+The current balance of `f090` is **~282.9M FIL** (some tokens were transferred in early network operations). After 5+ years, no mechanism for distribution has been ratified, and FIP-0093 has been in review for approximately 20 months.
 
-The reserve represents unrealized inflation potential. Burning it:
-- Permanently removes 300M FIL of potential future supply
+Burning the reserve:
+- Permanently removes ~283M FIL of potential future supply inflation
 - Has zero effect on current circulating supply (the reserve is not circulating)
-- Has zero effect on daily issuance (the reserve is separate from storage mining allocation)
-- Signals credible commitment to predictable monetary policy
+- Has zero effect on daily block reward issuance (the reserve is separate from the storage mining allocation)
+- Provides a credible commitment to predictable monetary policy
 
 ## Specification
 
 ### 1. VDWM Transition
 
-Introduce a new constant and modify an existing one in the storage miner actor:
+Introduce new constants and a function in the storage miner actor (`actors/miner/src/policy.rs` in [builtin-actors](https://github.com/filecoin-project/builtin-actors)):
 
 ```rust
-/// Epoch at which the VDWM transition begins (set to upgrade activation epoch)
+/// Epoch at which the VDWM transition begins (set to network upgrade activation epoch).
 pub const VDWM_TRANSITION_START: ChainEpoch = UPGRADE_EPOCH; // set at deployment
 
-/// Duration of the VDWM transition in epochs (12 months = 365 * 2880 = 1,051,200 epochs)
+/// Duration of the VDWM transition: 12 months = 365 days × 2,880 epochs/day = 1,051,200 epochs.
 pub const VDWM_TRANSITION_DURATION: ChainEpoch = 1_051_200;
 
-/// Target VDWM after transition completes
-pub const VDWM_TRANSITION_TARGET: BigInt = BigInt::from(10); // == QBM == DWM
+/// Target VDWM code value after transition (equals QUALITY_BASE_MULTIPLIER → effective 1×).
+pub const VDWM_TRANSITION_TARGET: BigInt = BigInt::from(10);
 ```
 
-Modify the quality multiplier calculation to interpolate during the transition:
+Replace the static `VERIFIED_DEAL_WEIGHT_MULTIPLIER` constant with an epoch-aware function:
 
 ```rust
 /// Returns the verified deal weight multiplier code value at the given epoch.
-/// This replaces the static `VERIFIED_DEAL_WEIGHT_MULTIPLIER` constant (100).
-/// The effective quality ratio is this value divided by QUALITY_BASE_MULTIPLIER (10).
 ///
-/// Pre-transition: returns 100  (effective 10×)
-/// Post-transition: returns 10  (effective 1×, equal to QUALITY_BASE_MULTIPLIER)
+/// Context: In builtin-actors, quality multipliers are expressed as code values
+/// that are divided by QUALITY_BASE_MULTIPLIER (10) to produce the effective ratio.
+/// The current VERIFIED_DEAL_WEIGHT_MULTIPLIER is 100 (code value), giving an
+/// effective ratio of 100/10 = 10×.
+///
+/// This function interpolates: 100 → 10 (code values) = 10× → 1× (effective).
+///
+/// Pre-transition:    returns 100  (effective 10×)
 /// During transition: linearly interpolates from 100 to 10
+/// Post-transition:   returns 10   (effective 1×, equal to QUALITY_BASE_MULTIPLIER)
 pub fn verified_deal_weight_multiplier_at(epoch: ChainEpoch) -> BigInt {
     if epoch < VDWM_TRANSITION_START {
-        return BigInt::from(100); // Pre-transition: original code value
+        return BigInt::from(100); // Original code value
     }
     let elapsed = epoch - VDWM_TRANSITION_START;
     if elapsed >= VDWM_TRANSITION_DURATION {
-        return VDWM_TRANSITION_TARGET; // Post-transition: equals QBM (10)
+        return VDWM_TRANSITION_TARGET; // 10 (code value) = 1× effective
     }
-    // Linear interpolation: 100 → 10 over transition period
-    // multiplier = 100 - 90 * (elapsed / duration)
-    // Using integer math: multiplier = (100 * duration - 90 * elapsed) / duration
+    // Linear interpolation: 100 → 10 over the transition period.
+    // multiplier = 100 - 90 × (elapsed / duration)
+    // Using integer arithmetic to avoid floating point:
     let duration = BigInt::from(VDWM_TRANSITION_DURATION);
     let numer = BigInt::from(100) * &duration - BigInt::from(90) * BigInt::from(elapsed);
-    // Floor division, minimum 10 (= QUALITY_BASE_MULTIPLIER)
     std::cmp::max(numer / duration, BigInt::from(10))
 }
 ```
 
-The quality multiplier is applied at:
-- **Sector activation** (`ProveCommitSectors3`, `ProveCommitSectorsNI`): Quality calculated using `verified_deal_weight_multiplier_at(activation_epoch)`.
-- **Sector extension** (`ExtendSectorExpiration2`): Quality recalculated using `verified_deal_weight_multiplier_at(extension_epoch)`.
-- **Replica update** (`ProveReplicaUpdates3`): Quality recalculated using `verified_deal_weight_multiplier_at(update_epoch)`.
+**Call sites to modify** (in `actors/miner/src/policy.rs`):
 
-**Existing sectors** retain their original quality until they are extended, updated, or expire. No retroactive quality adjustment is applied. This is the **grandfathering approach**, chosen because:
-- Zero additional gas cost (no CronTick changes).
-- Existing sectors' pledge calculations were made under VDWM=10; retroactive changes would alter the economic contract under which those sectors were committed.
-- Old sectors will naturally cycle out as they reach maximum lifetime (3.5 years per FIP-0052).
+```rust
+// In quality_for_weight(): replace static constant with epoch-aware call.
+// Before:
+//   let weighted_verified = verified_weight * &*VERIFIED_DEAL_WEIGHT_MULTIPLIER;
+// After:
+let weighted_verified = verified_weight * verified_deal_weight_multiplier_at(epoch);
+```
 
-**WindowPoSt and power table updates:**
-The power table tracks QAP per miner. When a sector's quality changes (via extension or update), the power table is updated accordingly. WindowPoSt itself does not depend on the quality multiplier — it proves existence of sealed data regardless of deal type.
+The `epoch` parameter must be threaded through from the activation, extension, or update context. The two primary call sites are:
+- `quality_for_weight()` — used during sector activation, extension, and replica update
+- `qa_power_max()` — used for maximum power calculations (use `VDWM_TRANSITION_TARGET` post-transition)
+
+**When quality is recalculated:**
+- **Sector activation** (`ProveCommitSectors3`, `ProveCommitSectorsNI`): Uses `verified_deal_weight_multiplier_at(activation_epoch)`.
+- **Sector extension** (`ExtendSectorExpiration2`): Recalculated using `verified_deal_weight_multiplier_at(extension_epoch)`.
+- **Replica update** (`ProveReplicaUpdates3`): Recalculated using `verified_deal_weight_multiplier_at(update_epoch)`.
+
+**Grandfathering:** Existing sectors retain their original quality until they are extended, updated, or expire. No retroactive quality adjustment is applied. This approach was chosen because:
+- Zero additional gas (no CronTick changes, no sector iteration at migration).
+- Respects the economic terms under which existing sectors were committed.
+- All pre-transition sectors expire within 3.5 years (FIP-0052 max lifetime).
+
+**WindowPoSt:** Unaffected. WindowPoSt proves existence of sealed data regardless of deal type and does not invoke `quality_for_weight()`.
 
 ### 2. Mining Reserve Burn
 
-At the upgrade epoch, execute a one-time transfer of the mining reserve balance to the burn address:
+At the upgrade epoch, execute a one-time transfer of the reserve actor's entire balance to the burn address:
 
 ```go
-// In the system actor upgrade logic:
+// In system actor upgrade logic:
 reserveActor := builtin.ReserveActorAddr  // f090
 burnActor := builtin.BurntFundsActorAddr  // f099
-balance := getActorBalance(reserveActor)
+balance := getActorBalance(reserveActor)  // ~282.9M FIL at time of writing
 transferFunds(reserveActor, burnActor, balance)
 ```
 
 After this transfer:
-- `FIL_MiningReserveAlloc` effectively becomes 0.
 - The tokens are permanently unspendable (same burn mechanism as gas fees).
 - No new governance mechanism is needed — the reserve simply ceases to exist.
 
-### 3. FIP-0003 Status Update
+### 3. FIP-0003 Quality Multiplier Sunset
 
-FIP-0003 (Filecoin Plus Principles) currently has status `Active`. Upon completion of the VDWM transition (12 months after activation), FIP-0003 should be updated to status `Superseded` by this FIP, as the quality multiplier it introduced will no longer have differential effect.
+Upon completion of the VDWM transition (12 months after activation), the quality multiplier mechanism introduced in FIP-0003 will no longer produce differential rewards between sector types. The Fil+ governance infrastructure (notaries, DataCap) may continue to serve application-layer verification and reputation purposes, but will no longer affect protocol-level block reward distribution.
 
 ## Design Rationale
 
 ### Why a 12-month linear transition?
 
-Simulation of both immediate (VDWM=10→1 at activation) and gradual (10→1 over 12 months) transitions shows:
-
-| | Year 1 Reward/TiB | Year 1 Pledge/32G | Year 1 ROI |
+| Approach | Year 1 CC Reward | Year 1 Pledge | Year 1 ROI |
 |---|---|---|---|
-| Immediate removal | 0.0286 FIL/day | 0.052 FIL | 626% |
-| 12-month gradual | 0.0286 FIL/day (at completion) | 0.052 FIL (at completion) | 626% (at completion) |
-| 3-year gradual | 0.0048 FIL/day (at year 1) | 0.037 FIL | 146% |
+| Immediate (VDWM 10→1 at activation) | 0.000910 FIL/day | 0.0834 FIL | 399% |
+| 12-month gradual (this FIP) | 0.000910 FIL/day *at completion* | 0.0834 FIL *at completion* | 399% *at completion* |
+| 3-year gradual | 0.000210 FIL/day at year 1 | 0.037 FIL | 146% |
 
 The 12-month transition achieves the same end-state as immediate removal while providing:
-1. Time for SPs to adjust operational strategies.
-2. Gradual unwinding of Fil+ data positions.
-3. Smoother power table transitions for consensus stability.
+1. Time for storage providers to adjust operational strategies.
+2. Gradual unwinding of Fil+-dependent business models.
+3. Smooth power table transitions for consensus stability.
 
-A 3-year transition extends the period of suboptimal economics unnecessarily.
+A 3-year transition unnecessarily extends the period of suboptimal economics.
 
 ### Why not slow the baseline growth?
 
-I tested baseline growth rates from 0% to 100%/year in simulation, with VDWM=1 and stable RBP:
+Counterintuitively, the growing baseline *helps* SP economics. Our simulation tested growth rates from 0% to 100%/year with VDWM=1:
 
 | Baseline Growth | Reward/TiB (Y5) | Pledge/32GiB (Y5) | ROI (Y5) |
 |---|---|---|---|
-| 0% (freeze) | 0.01824 | 0.0856 | 243% |
-| 25%/year | 0.01824 | 0.0357 | 583% |
-| 50%/year | 0.01824 | 0.0212 | 984% |
-| 100%/year (current) | 0.01824 | 0.0137 | 1,518% |
+| 0% (freeze) | 0.01824 FIL | 0.0856 FIL | 243% |
+| 50%/year | 0.01824 FIL | 0.0212 FIL | 984% |
+| 100%/year (current) | 0.01824 FIL | 0.0137 FIL | 1,518% |
 
-**Rewards are identical** across all growth rates (because $\text{RBP} \ll \text{baseline}$ in all cases, so $\bar{R} = \text{RBP}$ regardless). But pledge **increases** when baseline growth slows, because the consensus pledge formula:
-
-$$\text{AdditionalIP} = 0.30 \times C(t) \times \frac{\text{SectorQAP}}{\max(\text{Baseline}(t),\; \text{NetworkQAP}(t))}$$
-
-produces a larger result when the baseline is smaller.
-
-Counterintuitively, the growing baseline *helps* SP economics by keeping the denominator large and pledge low. I therefore leave the baseline growth rate unchanged.
+**Rewards are identical** across all growth rates (RBP << baseline in all cases). But pledge **increases** when the baseline shrinks, because `consensus_pledge = 0.30 × CircSupply × SectorQAP / max(Baseline, NetworkQAP)` — a smaller denominator means more pledge. The growing baseline keeps pledge manageable.
 
 ### Why combine VDWM reduction with mining reserve burn?
 
-These two changes are economically independent:
-- VDWM reduction: changes reward redistribution, not total issuance.
-- Reserve burn: changes potential future supply, not current issuance.
+These two changes are economically independent (no formula contains both variables). Combining them:
+1. Addresses the two most prominent community governance concerns — [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) (358 comments) and [PR #1039](https://github.com/filecoin-project/FIPs/pull/1039) (~20 months stalled) — in one proposal.
+2. Reduces the number of consensus upgrades needed.
+3. Demonstrates that meaningful economic reform can be achieved with minimal protocol disruption.
 
-Combining them in a single FIP:
-1. Addresses the two most prominent community governance concerns (Discussion #774 with 358 comments, and PR #1039 with 14+ months of stalled review) in one coherent proposal.
-2. Demonstrates that fundamental economic reform can be achieved with minimal protocol disruption.
-3. Reduces the number of separate consensus upgrades needed.
+### Why grandfathering instead of retroactive adjustment?
 
-### Why grandfathering instead of retroactive quality adjustment?
+- **Gas**: Retroactively adjusting all sectors' quality would require updating the power table for every active sector across 923 miners — potentially millions of state updates exceeding block gas limits.
+- **Fairness**: Providers committed pledge under VDWM=10 rules. Retroactive changes would alter the economic terms under which those sectors were committed.
+- **Bounded duration**: All pre-transition sectors expire within 3.5 years (FIP-0052). The overlap is temporary and diminishing.
 
-**Gas analysis (Phase 2):** Retroactively adjusting all existing sectors' quality would require updating the power table for every active sector at the transition step. With ~2.17 EiB across 923 miners, this involves potentially millions of state updates, which would exceed the block gas limit of $10^{10}$ gas.
+### What makes this FIP different from prior proposals?
 
-**Economic fairness:** Storage providers committed pledge under VDWM=10 rules. Retroactively reducing their quality without reducing their pledge would change the economic contract they entered.
+| Aspect | FIP-0080 (2023) | This FIP |
+|---|---|---|
+| Economic analysis | Qualitative arguments | Quantitative simulation (44,850 data points, [open source](https://github.com/Reiers/super-fip-sim)) |
+| Security analysis | Brief qualitative section | Formal analysis of 5 attack vectors with quantitative bounds |
+| Gas benchmarking | Not addressed | Full gas impact analysis (<0.01% overhead) |
+| Code specification | "Set multiplier to 10" | Epoch-aware interpolation function with exact call sites |
+| Transition mechanism | "Existing deals keep quality" | 12-month linear interpolation with grandfathering |
+| Mining reserve | Not addressed | Combined with reserve burn |
+| Cross-FIP analysis | Not addressed | Verified compatibility with FIP-0081, 0086, 0098, 0100 |
 
-**Natural cycle-out:** With maximum sector lifetime of 3.5 years (FIP-0052), all pre-transition sectors will expire within 3.5 years of activation. The overlap period where old 10x sectors coexist with new 1x sectors is bounded and diminishing.
+This FIP is not a replacement for FIP-0080 — it is the quantitative completion of the work that FIP-0080 began.
 
 ## Backwards Compatibility
 
-This proposal changes the behavior of the built-in storage miner actor and requires a network upgrade.
+This proposal modifies the built-in storage miner actor and requires a network upgrade.
 
-**State migration:** Minimal. No structural changes to `SectorOnChainInfo` or `Deadline` are needed. The quality multiplier is a runtime parameter used during sector activation, extension, and update — it does not require migration of existing sector state.
+**State migration:** Minimal. No structural changes to `SectorOnChainInfo` or `Deadline` are needed. The quality multiplier is applied at runtime during sector activation, extension, and update. No existing sector state requires migration. The reserve burn is a single balance transfer (~2M gas). This is among the lightest state migrations of any recent core FIP — compare to nv25 Teep which iterated every miner, deadline, and partition.
 
-**API compatibility:** The `StateMinerSectors`, `StateSectorGetInfo`, and related APIs will return the existing quality values for grandfathered sectors and new quality values for sectors activated/extended after the upgrade. Clients that compute QAP should use the `verified_deal_weight_multiplier(epoch)` function for forward calculations.
+**API compatibility:** `StateMinerSectors`, `StateSectorGetInfo`, and related APIs return existing quality values for grandfathered sectors and new values for sectors activated after the upgrade. Clients computing QAP should use the `verified_deal_weight_multiplier_at(epoch)` function for forward calculations.
 
-**Miner operations:** Storage providers do not need to change their sealing pipeline. The quality multiplier is applied automatically by the miner actor. SPs with existing Fil+ workflows can continue making verified deals — the deals will simply not receive enhanced quality.
+**Miner operations:** Storage providers do not need to change their sealing pipeline. The quality multiplier is applied automatically by the miner actor. Existing Fil+ workflows can continue — deals will simply not receive enhanced quality after the transition.
 
 ## Test Cases
 
 ### Unit Tests
 
-1. **Multiplier interpolation** (code values, effective ratio = code_value / QBM):
-   - At `TRANSITION_START`: returns 100 (effective 10×)
-   - At `TRANSITION_START + DURATION/2`: returns 55 (effective 5.5×, ±0.5 from integer math)
-   - At `TRANSITION_START + DURATION`: returns 10 (effective 1×)
-   - At `TRANSITION_START + DURATION + 1`: returns 10 (effective 1×)
+1. **Multiplier interpolation** (code values → effective ratio = code_value / QBM):
    - Before `TRANSITION_START`: returns 100 (effective 10×)
+   - At `TRANSITION_START`: returns 100 (effective 10×)
+   - At `TRANSITION_START + DURATION/2` (525,600 epochs): returns 55 (effective 5.5×)
+   - At `TRANSITION_START + DURATION` (1,051,200 epochs): returns 10 (effective 1×)
+   - At `TRANSITION_START + DURATION + 1`: returns 10 (effective 1×)
 
-2. **Sector activation during transition:**
-   - CC sector at any epoch: QAP = RBP (always 1×, unaffected by VDWM)
-   - Fil+ sector at transition midpoint: QAP = RBP × 5.5 (interpolated ~5.5×)
-   - Fil+ sector after transition: QAP = RBP (effective 1×)
+2. **CC sector quality is always 1×** regardless of VDWM — CC sectors have zero verified weight, so the multiplier has no effect on them. Verify this invariant holds throughout the transition.
 
-3. **Sector extension across transition:**
-   - Sector originally activated with VDWM=10, extended after transition completes: new QAP = RBP × 1
+3. **Fil+ sector at transition midpoint:** QAP ≈ RBP × 5.5 (interpolated effective multiplier).
 
-4. **Mining reserve burn:**
-   - Reserve actor balance → 0 after upgrade
-   - Burn actor balance increased by former reserve balance
-   - Total supply decreased by former reserve balance
+4. **Sector extension across transition:** Sector activated with VDWM=10, extended after transition completes → new QAP = RBP × 1.
+
+5. **Mining reserve burn:**
+   - Reserve actor (`f090`) balance → 0 after upgrade.
+   - Burn actor (`f099`) balance increased by former reserve balance.
+   - No other actor balances affected.
 
 ### Integration Tests
 
-5. **WindowPoSt unaffected:** Prove that WindowPoSt succeeds identically for sectors regardless of when they were activated relative to the transition.
+6. **WindowPoSt unaffected:** Prove that WindowPoSt succeeds identically for sectors regardless of when they were activated relative to the transition.
 
-6. **Block reward distribution:** Over a simulated transition period, verify that total block rewards match the expected minting curve (M_S + M_B) within rounding tolerance.
+7. **Block reward distribution:** Over a simulated transition period, verify total block rewards match the expected minting curve `M(t) = M_S(t) + M_B(t)` within rounding tolerance.
 
-7. **Pledge calculation:** Verify that initial pledge for new sectors uses the interpolated VDWM at activation epoch.
+8. **Pledge calculation:** Verify that initial pledge for new sectors uses the interpolated VDWM at the activation epoch.
+
+9. **Cross-FIP interaction:**
+   - FIP-0081 (pledge ramp): Verify the gamma pledge ramp operates correctly with changing VDWM. The ramp multiplier is independent of the quality multiplier.
+   - FIP-0098 (simple termination fee): Verify 8.5% termination fee is correctly calculated on the updated initial pledge.
+   - FIP-0100 (per-sector daily fee): Verify daily fee calculation with updated sector quality.
 
 ## Security Considerations
 
-A comprehensive formal security analysis accompanies this FIP (see `security-analysis.md`). Five attack vectors were analyzed with quantitative bounds. Summary:
+A comprehensive formal security analysis accompanies this FIP ([full analysis](https://github.com/Reiers/super-fip/blob/master/security-analysis.md)). Five attack vectors were analyzed with quantitative bounds:
 
 ### Consensus security improves
 
-The minimum physical cost of a 51% consensus attack **increases by 17.6%** after Daybreak:
+The minimum physical cost of a 51% consensus attack **increases by 17.6%**:
 
-| Metric | Current (VDWM=10) | Post-Daybreak (VDWM=1) |
+| Metric | Current (VDWM=10) | After Daybreak (VDWM=1) |
 |---|---|---|
-| Minimum physical storage for 51% | 0.944 EiB (via datacap) | 1.107 EiB |
+| Minimum physical storage for 51% | 0.944 EiB (via datacap) | 1.107 EiB (physical only) |
 | Minimum pledge capital for 51% | ~$3.9M | ~$4.5M |
-| Virtual (non-physical) power | 8.5 EiB (56% of QAP) | 0 |
+| Virtual (non-physical) consensus power | ~8.5 EiB (56% of QAP) | 0 |
 
-Today, an attacker with access to datacap can acquire 51% of consensus power with only 0.944 EiB of physical storage (the 10× multiplier supplies the rest virtually). After Daybreak, 100% of consensus power is physically backed, requiring 1.107 EiB — a strictly higher barrier.
+Today, an attacker with datacap access can acquire 51% of consensus power with only 0.944 EiB of physical storage — the 10× multiplier supplies the rest virtually. After Daybreak, 100% of consensus power is physically backed.
 
-F3 fast finality (FIP-0086) provides an additional ~900× safety margin by reducing the finality window from 7.5 hours to ~30 seconds, making QAP-based consensus attacks impractical regardless of VDWM.
+F3 fast finality ([FIP-0086](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)) provides an additional safety margin by reducing the finality window from 7.5 hours to ~30 seconds.
 
 ### Flash power attacks are economically irrational
 
-An attacker onboarding CC sectors during the transition and terminating to extract rewards faces:
-
-- **25-day minimum break-even** on the termination fee alone (FIP-0098: 8.5% of initial pledge)
-- **75% of rewards locked** in 180-day vesting (unvested rewards forfeit on termination)
-- **Scaling penalty**: adding power dilutes the attacker's own per-unit reward (reward ∝ 1/(P+A))
-- **Pledge lock**: 20 days of expected reward locked as storage pledge, plus consensus pledge
-
-A flash power attack requires a minimum 25-day capital commitment for zero net profit (excluding opportunity cost). This is not a viable attack strategy.
+An attacker onboarding sectors during the transition and terminating to extract rewards faces:
+- **25-day minimum break-even** on the termination fee (FIP-0098: 8.5% of initial pledge)
+- **75% of rewards locked** in 180-day vesting — unvested rewards forfeit on termination
+- **Scaling penalty**: adding power dilutes the attacker's own per-unit reward
+- **Result**: Minimum 25-day capital commitment for zero net profit. Not a viable "flash" strategy.
 
 ### Quality arbitrage is bounded and diminishing
 
-Under the grandfathering approach, existing Fil+ sectors retain their 10× quality until expiry. The maximum "grandfathered premium" is bounded by:
+Under grandfathering, existing Fil+ sectors retain 10× quality until expiry. The maximum premium is:
 ```
-Premium ≤ 9 × CC_reward_rate × remaining_sector_days → 0 as sectors expire
+Premium ≤ 9 × CC_reward_rate × remaining_sector_days → 0
 ```
+All grandfathered sectors expire within 3.5 years (FIP-0052). This is the cost of a smooth transition — it is the gradual elimination of existing redistribution, not new value creation.
 
-All grandfathered sectors expire within 3.5 years (FIP-0052 max lifetime). The premium represents the cost of a smooth transition — it is the gradual elimination of existing redistribution, not new value creation. Total network issuance is unchanged.
+### Mining reserve burn has no protocol interaction
 
-### Mining reserve burn security
+The reserve burn is a one-time balance transfer. No economic formula contains both VDWM and the reserve balance as variables. These changes are mathematically independent.
 
-The reserve burn is a one-time state transfer with no ongoing protocol implications. The tokens are transferred to the burn address `f099`, which is the same mechanism used for gas fee burns — well-tested and irreversible. The reserve burn and VDWM change are mathematically independent: no economic formula contains both variables.
+### No new attack vectors
 
-### No new attack vectors introduced
-
-Daybreak leverages existing security mechanisms (pledge, vesting, termination fees, F3 finality) without requiring new security parameters. All five analyzed attack vectors (flash power, quality arbitrage, notary front-running, reserve interaction, consensus security) either have negative expected return or show improved security posture compared to the status quo.
+Daybreak leverages existing security mechanisms (pledge, vesting, termination fees, F3 finality) without introducing new security parameters. All analyzed vectors either have negative expected return or show improved security posture compared to the status quo.
 
 ## Incentive Considerations
 
 ### Who benefits
 
-- **CC storage providers:** 8.5× increase in per-sector revenue with only 24% increase in pledge. This is the largest economic improvement for honest miners in Filecoin's history.
-- **Small and new SPs:** No longer need to navigate the notary system to be competitive. Equal access to rewards based on physical storage contribution.
-- **Token holders:** Mining reserve burn removes 300M FIL of potential inflation. Reduced gaming activity improves network legitimacy.
-- **Real data clients:** Storage pricing becomes market-driven rather than subsidy-driven. Clients who genuinely value Filecoin storage will pay fair market rates.
+- **CC storage providers**: 8.5× revenue increase with only 24% more pledge. This is the largest economic improvement for honest, infrastructure-providing miners in Filecoin's history.
+- **Small and new SPs**: No longer need to navigate the notary system to earn competitive rewards. Equal access based on physical storage contribution.
+- **Token holders**: Reserve burn removes ~283M FIL of potential inflation. Reduced gaming improves network credibility.
+- **Genuine data clients**: Storage pricing becomes market-driven rather than subsidy-driven. Clients who value Filecoin storage pay fair market rates.
 
 ### Who is affected negatively
 
-- **Fil+ gaming operations:** SPs whose economic model depends on 10x multiplier from non-retrievable data will see rewards decrease to 1× levels. This is intentional — these operations extract network value without providing storage utility.
-- **Notary ecosystem:** DataCap and notary roles become economically irrelevant. Existing notary infrastructure can transition to verification/reputation services on the FVM.
-- **Large verified deal SPs (legitimate):** SPs storing genuine verified data will see per-sector rewards decrease from 10× to 1× multiplied levels. However, their physical storage still earns 1× rewards, and they can charge clients market rates for storage services.
+- **SPs dependent on the Fil+ subsidy**: Providers whose business model relies on the 10× multiplier (particularly for non-retrievable data) will see rewards decrease to 1× levels. This is an intended outcome — the subsidy has not produced the useful-storage incentive it was designed to create.
+- **Notary ecosystem**: DataCap and notary roles lose their protocol-level economic significance. These roles can transition to application-layer verification and reputation services.
+- **Legitimate verified deal SPs**: Providers storing genuine verified data will see per-sector rewards decrease. However, their physical storage still earns 1× rewards, and the transition provides 12 months to adjust pricing to market rates.
 
-### Transition economics
+### Transition timeline
 
-During the 12-month transition:
-- Month 1: VDWM ≈ 9.25 — minimal change from status quo
-- Month 6: VDWM ≈ 5.5 — CC sector reward approximately doubles
-- Month 12: VDWM = 1.0 — CC sector reward reaches 8.5× of pre-transition level
+| Month | Effective VDWM | CC Reward (approx.) | Notes |
+|-------|---------------|-------------------|-------|
+| 0 | 10× | 0.000107 FIL/day | Status quo |
+| 3 | 7.75× | 0.000138 FIL/day | Minimal change |
+| 6 | 5.5× | 0.000195 FIL/day | CC reward ~doubles |
+| 9 | 3.25× | 0.000339 FIL/day | Fil+ premium eroding |
+| 12 | 1× | 0.000910 FIL/day | All sectors equal |
 
-This gradual change allows market participants to adjust positions. SPs dependent on Fil+ subsidies have 12 months to transition to alternative business models (market-rate storage, FVM-based incentive contracts, FOC/PDP warm storage services).
+This gradual curve allows market participants to adjust positions. SPs dependent on Fil+ subsidies have 12 months to transition to alternative revenue models: market-rate storage, FVM-based incentive contracts, FOC/PDP warm storage services, or other application-layer mechanisms.
 
 ## Product Considerations
 
-### Impact on Filecoin storage products
+### Impact on existing storage products
 
-The Filecoin Onchain Cloud (FOC) ecosystem — including PDP (Provable Data Possession), FilecoinPay, FWSS (Filecoin Warm Storage Service), and Synapse SDK — operates independently of the Fil+ quality multiplier. These services provide storage verification and payment rails via FVM smart contracts. This FIP does not affect their operation.
+The Filecoin Onchain Cloud (FOC) stack — PDP (Provable Data Possession), FilecoinPay, FWSS, Synapse SDK — operates via FVM smart contracts and is independent of the Fil+ quality multiplier. This FIP does not affect those products.
 
 ### Future deal incentive mechanisms
 
-With VDWM=1 at the protocol level, deal incentive mechanisms move to the application layer:
-- FVM smart contracts can implement custom incentive structures (e.g., storage bounties, retrieval guarantees).
-- The FOC product stack provides built-in streaming payment rails for storage services.
-- DataDAO and data market protocols can offer deal-specific rewards without requiring protocol-level quality multipliers.
+With VDWM=1 at the protocol level, deal incentives move to the application layer:
+- FVM smart contracts can implement custom incentive structures (storage bounties, retrieval guarantees).
+- The FOC stack provides built-in streaming payment rails for storage services.
+- DataDAO and data market protocols can offer deal-specific rewards without protocol-level multipliers.
 
-This aligns with the principle of a minimal, neutral base layer supporting diverse application-layer innovation.
+This aligns with the design principle of a minimal, neutral base layer that supports diverse application-layer innovation — consistent with the approach taken by Ethereum and other mature L1 protocols.
 
 ## Implementation
 
-### builtin-actors changes
+### Required changes
 
-1. Modify `actors/miner/src/policy.rs`:
-   - Add `VDWM_TRANSITION_START`, `VDWM_TRANSITION_DURATION`, `VDWM_TRANSITION_TARGET` constants.
-   - Add `verified_deal_weight_multiplier_at(epoch)` function (interpolates code value 100→10).
-   - Update `quality_for_weight()`: replace `&*VERIFIED_DEAL_WEIGHT_MULTIPLIER` with `verified_deal_weight_multiplier_at(epoch)` (requires adding `epoch` parameter).
-   - Update `qa_power_max()`: use `VDWM_TRANSITION_TARGET` (post-transition max).
-   - Gas impact: < 0.01% per affected operation (see Phase 2 gas benchmarking).
+| Component | Change | Complexity |
+|---|---|---|
+| `filecoin-project/builtin-actors` — `actors/miner/src/policy.rs` | Add `verified_deal_weight_multiplier_at()`, update `quality_for_weight()` and `qa_power_max()` call sites | Low — function addition + 2 call site modifications |
+| `filecoin-project/builtin-actors` — system actor upgrade | Add reserve-to-burn transfer at upgrade epoch | Low — single balance transfer |
+| `filecoin-project/lotus` | Bundle new builtin-actors, set upgrade epoch | Standard upgrade procedure |
+| `filecoin-project/venus`, `ChainSafe/forest` | Bundle new builtin-actors, set upgrade epoch | Standard upgrade procedure |
+| `filecoin-project/specs` | Update sector quality and token allocation sections | Documentation |
+| `filecoin-project/ref-fvm` | No changes needed | — |
 
-2. Modify system actor upgrade logic:
-   - Add reserve-to-burn transfer at upgrade epoch.
+### Gas impact
+
+The code change adds approximately 200–350 gas per invocation of `quality_for_weight()` (46–89 additional WASM instructions at 4 gas each). In context:
+
+| Operation | Current Gas | Added Gas | Overhead |
+|---|---|---|---|
+| `ProveCommitSectors3` (3 sectors) | ~530,000,000 | ~900 | 0.00017% |
+| `PreCommitSectorBatch2` (4 sectors) | ~120,000,000 | ~1,200 | 0.0010% |
+| `SubmitWindowedPoSt` | ~24,000,000 | 0 | 0% (does not call `quality_for_weight()`) |
+| `CronTick` | ~10–50,000,000 | 0 | 0% (grandfathering: no quality recalculation) |
+| State migration (reserve burn) | — | ~2,000,000 | One-time |
 
 ### Implementation tracking
 
 | Repository | PR | Status |
 |---|---|---|
 | `filecoin-project/builtin-actors` | TBD | Not started |
-| `filecoin-project/ref-fvm` | N/A | No changes needed |
 | `filecoin-project/lotus` | TBD | Not started |
 | `filecoin-project/venus` | TBD | Not started |
 | `ChainSafe/forest` | TBD | Not started |
 | `filecoin-project/specs` | TBD | Not started |
 
-### Simulation code
+## Acknowledgments
 
-The economic simulation used to generate the data in this FIP is publicly available:
-- **Language:** CUDA C++ (validated on NVIDIA RTX 5080, Blackwell architecture)
-- **Data:** 12 scenario CSVs (3,650 daily data points each) + 210-point parameter sweep
-- **Reproducibility:** Source code, build instructions, and full output data will be published alongside this FIP. Build with `make` (requires CUDA toolkit 13.0+), run with `make run`.
+This FIP builds on the work of many community members who have advocated for economic reform over the past several years, particularly the authors of FIP-0080 (Fatman13, ArthurWang1255, stuberman, Eliovp, dcasem, The-Wayvy) and FIP-0093 (dcasem). The extensive discussion in [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) and [Discussion #1030](https://github.com/filecoin-project/FIPs/discussions/1030) provided the community context that informed this proposal.
 
-All economic claims in this FIP can be independently verified by running the simulation or by direct computation from the Filecoin spec formulas cited above.
+The economic simulation, gas benchmarking, and security analysis were developed with the assistance of AI tools (Anthropic Claude) and GPU compute (NVIDIA RTX 5080) to validate mathematical claims against the Filecoin protocol specification and on-chain data. All simulation source code, data, and analysis are published for independent verification:
+
+- **Simulation**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim)
+- **Analysis and security proofs**: [github.com/Reiers/super-fip](https://github.com/Reiers/super-fip)
 
 ## References
 
@@ -446,13 +488,15 @@ All economic claims in this FIP can be independently verified by running the sim
 - [Filecoin Spec: Sector Quality](https://spec.filecoin.io/#section-systems.filecoin_mining.sector.sector-quality) — Defines QAP, VDWM, DWM, QBM
 - [Filecoin Spec: Miner Collaterals](https://spec.filecoin.io/#section-systems.filecoin_mining.miner_collaterals) — Defines initial pledge formula
 - [Filecoin Spec: Token Allocation](https://spec.filecoin.io/#section-systems.filecoin_token.token_allocation) — Defines mining reserve
-- [FIP-0003: Filecoin Plus Principles](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0003.md) — Introduced the 10x quality multiplier
-- [FIP-0080: Phasing Out Fil+ (Discussion #774)](https://github.com/filecoin-project/FIPs/discussions/774) — 358 comments, 2.5 years in Draft
-- [FIP-0093: Set Mining Reserve to Zero (PR #1039)](https://github.com/filecoin-project/FIPs/pull/1039) — 14+ months stalled
+- [FIP-0003: Filecoin Plus Principles](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0003.md) — Introduced the 10× quality multiplier
 - [FIP-0052: Increase Max Sector Commitment to 3.5 Years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) — Sector lifetime bound
+- [FIP-0076: Direct Data Onboarding](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md) — Current DataCap allocation mechanism
+- [FIP-0080: Phasing Out Fil+](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0080.md) — Prior proposal, [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774)
+- [FIP-0081: Pledge Ramp](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md) — Pledge smoothing mechanism
 - [FIP-0086: Fast Finality (F3)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) — 30-second finality
+- [FIP-0093: Set Mining Reserve to Zero](https://github.com/filecoin-project/FIPs/pull/1039) — Prior proposal for reserve burn
 - [FIP-0098: Simple Termination Fee](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md) — 8.5% of initial pledge
-- [FIP-0100: Per-Sector Fee](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) — Daily fee mechanism
+- [FIP-0100: Per-Sector Daily Fee](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) — Daily fee mechanism
 - [CryptoEconLab: Resilience of the Filecoin Network](https://medium.com/cryptoeconlab/resilience-of-the-filecoin-network-d7861ee9986a)
 
 ## Copyright
