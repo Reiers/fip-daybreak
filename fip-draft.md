@@ -22,7 +22,7 @@ Gradually reduce the Verified Deal Weight Multiplier (VDWM) from 10× to 1× ove
 
 ## Abstract
 
-FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~19.5 EiB in mid-2022 and has since declined to 2.17 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
+FIP-0003 (Filecoin Plus, 2020) introduced a 10× quality-adjusted power (QAP) multiplier for sectors containing verified deals. After five years of operation, the program's outcomes have diverged significantly from its intended goals: Raw Byte Power (RBP) peaked at ~17 EiB in mid-2022 and has since declined to 2.17 EiB; independent community analyses estimate that a substantial portion of verified data may not be retrievable; and a permissioned notary layer has become a gatekeeper for block reward distribution.
 
 This FIP proposes two changes:
 
@@ -120,7 +120,7 @@ The consensus pledge is unchanged because its denominator $\max(Baseline, QAP)$ 
 
 ### The baseline gap is now structural
 
-The baseline function grows at 100% per year from an initial value of ~2.5 EiB. The network exceeded the baseline from early 2021 through approximately April 2023 — at peak (mid-2022), RBP reached ~19.5 EiB against a baseline of ~8 EiB. During this period, baseline minting operated at full rate.
+The baseline function grows at 100% per year from an initial value of ~2.5 EiB. The network exceeded the baseline from April 2021 through early 2023 — at peak (August 2022), RBP reached ~17 EiB against a baseline of ~10 EiB. During this period, baseline minting operated at full rate.
 
 Since mid-2023, RBP has fallen far below the baseline and the gap widens exponentially:
 
@@ -128,12 +128,12 @@ Since mid-2023, RBP has fallen far below the baseline and the gap widens exponen
 |---|---|
 | Current baseline | ~114.5 EiB |
 | Current RBP | 2.17 EiB (**1.9% of baseline**) |
-| Historical peak RBP | ~19.5 EiB (mid-2022) |
+| Historical peak RBP | ~17 EiB (August 2022) |
 | Effective network time $\theta$ | ~3.34 years (vs 5.5 years actual) |
 | Baseline minted (of 770M allocation) | ~246M FIL (32%) |
 | Baseline rewards currently deferred | ~524M FIL (68%) |
 
-The baseline now stands at ~114.5 EiB — nearly 6× the historical peak RBP and 53× the current RBP. Even aggressive growth scenarios cannot close this gap. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
+The baseline now stands at ~114.5 EiB — nearly 7× the historical peak RBP and 53× the current RBP. Even aggressive growth scenarios cannot close this gap. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
 
 Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the baseline growth does not improve SP economics** — it actually increases consensus pledge because the denominator $\max(Baseline, QAP)$ shrinks. We therefore propose leaving the baseline growth rate unchanged.
 
@@ -141,7 +141,7 @@ Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the 
 
 FIP-0003 was designed to "incentivize useful storage" via a quality multiplier for verified data. After five years of operation:
 
-1. **RBP has declined**, not increased — from a peak of ~19.5 EiB (mid-2022) to 2.17 EiB today.
+1. **RBP has declined**, not increased — from a peak of ~17 EiB (August 2022) to 2.17 EiB today.
 2. **Independent community analyses** report significant concerns about data retrievability for Fil+ sectors (see [Discussion #774](https://github.com/filecoin-project/FIPs/discussions/774) and linked audit reports).
 3. **A permissioned notary layer** determines which storage providers earn enhanced rewards, creating centralization pressure that is in tension with Filecoin's [stated mission](https://github.com/filecoin-project/FIPs/blob/master/mission.md) of decentralization.
 4. **Block rewards per TiB have declined significantly** after Fil+ adoption, as the subsidy creates a competitive dynamic where "when everyone gets 10×, nobody does."

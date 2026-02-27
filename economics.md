@@ -77,7 +77,7 @@ The multiplier ONLY redistributes existing rewards from CC sectors to Fil+ secto
 | Baseline in 5 years | 3,656 EiB |
 | Baseline in 10 years | 116,954 EiB |
 
-The baseline was designed to start at 2.5 EiB and grow 100%/year. After 5.5 years, it's at 114 EiB while actual RBP peaked at ~19 EiB (in 2022) and has since declined to 2.17 EiB. **The network has never exceeded the baseline.**
+The baseline was designed to start at 2.5 EiB and grow 100%/year. The network exceeded the baseline from April 2021 through early 2023, with RBP peaking at ~17 EiB against a baseline of ~10 EiB (August 2022). Since then, RBP has declined to 2.17 EiB while the baseline has grown to ~114.5 EiB. **The gap is now structural and widening exponentially.**
 
 This means:
 - **Effective network time θ = 3.34 years** (vs actual age 5.5 years)
