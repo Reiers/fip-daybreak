@@ -60,7 +60,7 @@ All numbers independently verified against:
 | 4. Final Verification Pass | ✅ Complete |
 | 5. Community Pre-Review + FIP Submission | 🔜 Next |
 
-🔒 **Private** — Working draft. Not yet submitted to filecoin-project/FIPs.
+📋 **Draft** — Community pre-review. Not yet submitted to filecoin-project/FIPs.
 
 ## Files
 

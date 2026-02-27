@@ -578,8 +578,8 @@ All five security properties are proven. No profitable attack vector exists. Con
 - FIP-0076: DDO allocation constraints (60-day expiry)
 - FIP-0086: F3 fast finality (~30s)
 - FIP-0098: Simple termination fee (8.5% of initial pledge)
-- Phase 1 simulation data: `super-fip/results/` (44,850 data points)
-- Phase 2 gas benchmarking: `super-fip/phases.md`
+- Phase 1 simulation data: [`results/`](results/) (44,850 data points)
+- Phase 2 gas benchmarking: [`phases.md`](phases.md)
 - Filfox API: `https://filfox.info/api/v1/overview` (epoch 5,796,527)
 
 ## Copyright

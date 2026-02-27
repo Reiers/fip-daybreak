@@ -73,7 +73,7 @@ The critical definition from the spec:
 
 This result was validated analytically and by numerical simulation. The simulation models 12 scenarios across 10-year forward projections from the current network state.
 
-- **Source code**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim) (CUDA C++)
+- **Source code**: [github.com/Reiers/fip-daybreak/sim](https://github.com/Reiers/fip-daybreak/tree/main/sim) (CUDA C++)
 - **Hardware**: NVIDIA RTX 5080 GPU (Blackwell architecture)
 - **Methodology**: Computed cumulative capped RBP from genesis using 10 historical data points, derived $\theta(t)$ per spec formula, projected forward under each scenario.
 - **Full dataset**: 12 scenarios × 3,650 daily data points + 210-parameter sweep = 44,850 data points
@@ -302,7 +302,7 @@ These two changes are economically independent (no formula contains both variabl
 
 | Aspect | FIP-0080 (2023) | This FIP |
 |---|---|---|
-| Economic analysis | Qualitative arguments | Quantitative simulation (44,850 data points, [open source](https://github.com/Reiers/super-fip-sim)) |
+| Economic analysis | Qualitative arguments | Quantitative simulation (44,850 data points, [open source](https://github.com/Reiers/fip-daybreak/tree/main/sim)) |
 | Security analysis | Brief qualitative section | Formal analysis of 5 attack vectors with quantitative bounds |
 | Gas benchmarking | Not addressed | Full gas impact analysis (<0.01% overhead) |
 | Code specification | "Set multiplier to 10" | Epoch-aware interpolation function with exact call sites |
@@ -359,7 +359,7 @@ This proposal modifies the built-in storage miner actor and requires a network u
 
 ## Security Considerations
 
-A comprehensive formal security analysis accompanies this FIP ([full analysis](https://github.com/Reiers/super-fip/blob/master/security-analysis.md)). Five attack vectors were analyzed with quantitative bounds:
+A comprehensive formal security analysis accompanies this FIP ([full analysis](https://github.com/Reiers/fip-daybreak/blob/main/security-analysis.md)). Five attack vectors were analyzed with quantitative bounds:
 
 ### Consensus security improves
 
@@ -480,8 +480,8 @@ This FIP builds on the work of many community members who have advocated for eco
 
 The economic simulation, gas benchmarking, and security analysis were developed with the assistance of AI tools (Anthropic Claude) and GPU compute (NVIDIA RTX 5080) to validate mathematical claims against the Filecoin protocol specification and on-chain data. All simulation source code, data, and analysis are published for independent verification:
 
-- **Simulation**: [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim)
-- **Analysis and security proofs**: [github.com/Reiers/super-fip](https://github.com/Reiers/super-fip)
+- **Simulation**: [github.com/Reiers/fip-daybreak/sim](https://github.com/Reiers/fip-daybreak/tree/main/sim)
+- **Analysis and security proofs**: [github.com/Reiers/fip-daybreak](https://github.com/Reiers/fip-daybreak)
 
 ## References
 
