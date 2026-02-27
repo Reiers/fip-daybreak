@@ -14,11 +14,11 @@
 
 The Filecoin spec defines baseline minting using **Raw Byte Power (RBP)**, not Quality-Adjusted Power (QAP):
 
-```
-R̄(t) = min(baseline(t), RBP(t))      ← RBP, not QAP
-θ(t) = (1/g) · ln(g · ∫R̄(x)dx / b₀ + 1)
-M_B(t) = M∞_B · (1 - e^{-λθ(t)})
-```
+$$\bar{R}(t) = \min\bigl(\text{baseline}(t),\; \text{RBP}(t)\bigr)$$
+
+$$\theta(t) = \frac{1}{g} \cdot \ln\!\left(\frac{g \cdot \int_0^t \bar{R}(x)\,dx}{b_0} + 1\right)$$
+
+$$M_B(t) = M_{\infty B} \cdot \left(1 - e^{-\lambda\,\theta(t)}\right)$$
 
 **Consequence:** The 10x Fil+ multiplier inflates QAP from 2.17 EiB to 18.5 EiB, but has **zero effect** on the minting trajectory. Total daily issuance is identical (66,249 FIL/day) regardless of VDWM value.
 
@@ -212,14 +212,19 @@ The simulation's math tracks the spec within acceptable bounds.
 ### Theorem: VDWM does not affect total block reward issuance
 
 **Proof:**
-The total minted supply M(t) = M_S(t) + M_B(t), where:
-- M_S(t) = M∞_S · (1 - e^{-λt}) — independent of any network state
-- M_B(t) = M∞_B · (1 - e^{-λθ(t)}), where θ depends on cumulative capped RBP
 
-The effective network time θ(t) is defined by ∫₀^θ b(x)dx = ∫₀^t min(b(x), R(x))dx
+The total minted supply $M(t) = M_S(t) + M_B(t)$, where:
 
-R(x) is the **raw byte power** — the sum of sector sizes in bytes, regardless of quality multiplier. VDWM affects only QAP (quality-adjusted power), not RBP.
+$$M_S(t) = M_{\infty S} \cdot \left(1 - e^{-\lambda t}\right) \quad \text{(independent of any network state)}$$
 
-Therefore: changing VDWM leaves R(x) unchanged → cumulative sum unchanged → θ(t) unchanged → M_B(t) unchanged → M(t) unchanged. ∎
+$$M_B(t) = M_{\infty B} \cdot \left(1 - e^{-\lambda\,\theta(t)}\right) \quad \text{where } \theta \text{ depends on cumulative capped RBP}$$
+
+The effective network time $\theta(t)$ is defined by:
+
+$$\int_0^{\theta} b(x)\,dx = \int_0^{t} \min\bigl(b(x),\, R(x)\bigr)\,dx$$
+
+$R(x)$ is the **raw byte power** — the sum of sector sizes in bytes, regardless of quality multiplier. VDWM affects only QAP (quality-adjusted power), not RBP.
+
+Therefore: changing VDWM leaves $R(x)$ unchanged $\Rightarrow$ cumulative sum unchanged $\Rightarrow$ $\theta(t)$ unchanged $\Rightarrow$ $M_B(t)$ unchanged $\Rightarrow$ $M(t)$ unchanged. $\blacksquare$
 
 **Corollary:** The 10x multiplier is a pure redistribution mechanism. It taxes CC sectors to subsidize Fil+ sectors, with no net benefit to the network's minting trajectory.
