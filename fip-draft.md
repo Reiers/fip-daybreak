@@ -118,19 +118,22 @@ The consensus pledge is unchanged because its denominator $\max(Baseline, QAP)$ 
 
 **Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from 58% to 399% annually.
 
-### The baseline gap is structural
+### The baseline gap is now structural
 
-The baseline function grows at 100% per year from an initial value of ~2.5 EiB:
+The baseline function grows at 100% per year from an initial value of ~2.5 EiB. The network exceeded the baseline from approximately April 2021 through early 2023 — at peak (mid-2022), RBP reached ~19.5 EiB against a baseline of ~8.2 EiB. During this period, baseline minting operated at full rate.
+
+Since early 2023, RBP has fallen far below the baseline and the gap widens exponentially:
 
 | Metric | Value |
 |---|---|
 | Current baseline | ~114.5 EiB |
 | Current RBP | 2.17 EiB (**1.9% of baseline**) |
+| Historical peak RBP | ~19.5 EiB (mid-2022) |
 | Effective network time $\theta$ | ~3.34 years (vs 5.5 years actual) |
 | Baseline minted (of 770M allocation) | ~246M FIL (32%) |
-| Baseline rewards effectively deferred | ~524M FIL (68%) |
+| Baseline rewards currently deferred | ~524M FIL (68%) |
 
-The network has never exceeded the baseline. The gap widens exponentially. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
+The baseline now stands at ~114.5 EiB — nearly 6× the historical peak RBP and 53× the current RBP. Even aggressive growth scenarios cannot close this gap. The 10× multiplier was intended to help the network approach the baseline by incentivizing data storage, but the multiplier inflates QAP — and baseline minting depends on RBP.
 
 Our simulation tested baseline growth rates from 0% to 100%/year. **Slowing the baseline growth does not improve SP economics** — it actually increases consensus pledge because the denominator $\max(Baseline, QAP)$ shrinks. We therefore propose leaving the baseline growth rate unchanged.
 
