@@ -93,7 +93,7 @@ This result was validated analytically and by numerical simulation. The simulati
 
 **Key result — daily issuance is invariant to VDWM:**
 
-| Scenario | VDWM | Year 1 Avg | Year 5 Avg | Year 10 Avg |
+| Scenario | VDWM | At Year 1 | At Year 5 | At Year 10 |
 |---|---|---|---|---|
 | Status Quo | 10× | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
 | This FIP | 1× | 61,883 FIL/day | 39,400 FIL/day | 22,860 FIL/day |
