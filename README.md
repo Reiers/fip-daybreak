@@ -24,6 +24,10 @@ The 10× Fil+ multiplier **does not increase total block rewards**. The Filecoin
 
 **Total daily issuance is identical regardless of VDWM value.** Proven mathematically and by simulation.
 
+## Baseline History
+
+The network exceeded the baseline from early 2021 through approximately April 2023 — at peak (mid-2022), RBP reached ~19.5 EiB against a baseline of ~8 EiB. Since then, RBP has declined to 2.17 EiB while the baseline has grown to ~114.5 EiB. The gap is now structural and widening exponentially — the baseline stands at nearly 6× the historical peak and 53× the current RBP.
+
 ## Key Numbers
 
 | Metric | Current (VDWM=10) | Post-Daybreak (VDWM=1) | Change |
