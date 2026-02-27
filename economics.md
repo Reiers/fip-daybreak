@@ -14,9 +14,9 @@
 
 The Filecoin spec defines baseline minting using **Raw Byte Power (RBP)**, not Quality-Adjusted Power (QAP):
 
-$$\bar{R}(t) = \min\bigl(\text{baseline}(t),\; \text{RBP}(t)\bigr)$$
+$$\bar{R}(t) = \min(\text{baseline}(t),\; \text{RBP}(t))$$
 
-$$\theta(t) = \frac{1}{g} \cdot \ln\!\left(\frac{g \cdot \int_0^t \bar{R}(x)\,dx}{b_0} + 1\right)$$
+$$\theta(t) = \frac{1}{g} \cdot \ln\left(\frac{g \cdot \int_0^t \bar{R}(x)\,dx}{b_0} + 1\right)$$
 
 $$M_B(t) = M_{\infty B} \cdot \left(1 - e^{-\lambda\,\theta(t)}\right)$$
 
@@ -200,7 +200,7 @@ The simulation's math tracks the spec within acceptable bounds.
 - **Impact:** Removes 300M FIL inflation risk permanently
 - **No effect on current economics** — reserve was never circulating
 
-### What we are NOT proposing (and why):
+### What I am NOT proposing (and why):
 - **Baseline growth change:** Simulation shows slowing baseline INCREASES pledge. Keep at 100%.
 - **Reward vesting change:** 180-day vesting provides appropriate security buffer
 - **Consensus pledge target change:** 30% is well-calibrated for current network
@@ -221,7 +221,7 @@ $$M_B(t) = M_{\infty B} \cdot \left(1 - e^{-\lambda\,\theta(t)}\right) \quad \te
 
 The effective network time $\theta(t)$ is defined by:
 
-$$\int_0^{\theta} b(x)\,dx = \int_0^{t} \min\bigl(b(x),\, R(x)\bigr)\,dx$$
+$$\int_0^{\theta} b(x)\,dx = \int_0^{t} \min(b(x),\, R(x))\,dx$$
 
 $R(x)$ is the **raw byte power** — the sum of sector sizes in bytes, regardless of quality multiplier. VDWM affects only QAP (quality-adjusted power), not RBP.
 

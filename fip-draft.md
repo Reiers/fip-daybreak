@@ -44,7 +44,7 @@ The Filecoin minting model (specified in the [Block Reward Minting](https://spec
 
 Critically, the baseline function uses **Raw Byte Power (RBP)**, not Quality-Adjusted Power (QAP):
 
-$$\bar{R}(t) := \min\bigl\{b(t),\; R(t)\bigr\}$$
+$$\bar{R}(t) := \min\{b(t),\; R(t)\}$$
 
 where $R(t)$ is defined as "the instantaneous network raw-byte power (the total amount of bytes among all active sectors)" (spec §5.2.2). This is the sum of physical sector sizes, unaffected by quality multipliers.
 
@@ -54,7 +54,7 @@ The 10x multiplier is a **pure redistribution mechanism**. It does not increase 
 
 ### Simulation confirms: identical issuance across all VDWM values
 
-We validated this analytically and by numerical simulation. The simulation was implemented as a CUDA program ([source code](https://github.com/Reiers/super-fip-sim)) and executed on an NVIDIA RTX 5080 GPU, modeling 12 scenarios across 10-year forward projections from the current network state (epoch 5,796,404).
+I validated this analytically and by numerical simulation. The simulation was implemented as a CUDA program and executed on an NVIDIA RTX 5080 GPU (Blackwell architecture), modeling 12 scenarios across 10-year forward projections from the current network state (epoch 5,796,404). The simulation source code, input parameters, and output data are available upon request and will be published alongside this FIP.
 
 **Methodology:**
 
@@ -98,7 +98,7 @@ With VDWM=10, a 32 GiB CC sector competes against Fil+ sectors that hold 10x its
 | **Total initial pledge** | **0.0673 FIL** | **0.0834 FIL** | +24% |
 | Annual ROI on pledge | 58% | 399% | **+6.9×** |
 
-The consensus pledge is unchanged because the denominator $\max\bigl(b(t),\, \text{QAP}(t)\bigr)$ evaluates to the baseline in both cases ($114.21 \text{ EiB} \gg 18.5 \text{ EiB} \gg 2.17 \text{ EiB}$). The storage pledge increases proportionally to the higher per-sector reward, but this is a direct function of the sector earning more.
+The consensus pledge is unchanged because the denominator $\max(b(t),\, \text{QAP}(t))$ evaluates to the baseline in both cases ($114.21 \text{ EiB} \gg 18.5 \text{ EiB} \gg 2.17 \text{ EiB}$). The storage pledge increases proportionally to the higher per-sector reward, but this is a direct function of the sector earning more.
 
 **Net effect:** For every storage provider running committed capacity, revenue per unit of storage increases 8.5× while total pledge increases only 24%. ROI on pledge capital improves from 58% to 399%.
 
@@ -118,7 +118,7 @@ The network has never exceeded the baseline. Peak RBP was ~19 EiB in mid-2022; t
 
 The baseline continues to grow at 100%/year. In 5 more years it will reach ~3,656 EiB. In 10 years: ~116,954 EiB. The gap between actual storage and the baseline is widening exponentially.
 
-Our simulation confirmed that **slowing the baseline growth rate does not improve SP economics** — it actually *increases* the consensus pledge because the denominator $\max(\text{baseline},\, \text{QAP})$ decreases. We therefore propose leaving the baseline growth rate unchanged.
+Simulation confirmed that **slowing the baseline growth rate does not improve SP economics** — it actually *increases* the consensus pledge because the denominator $\max(\text{baseline},\, \text{QAP})$ decreases. I therefore propose leaving the baseline growth rate unchanged.
 
 ### Fil+ has failed its stated goals
 
@@ -243,7 +243,7 @@ A 3-year transition extends the period of suboptimal economics unnecessarily.
 
 ### Why not slow the baseline growth?
 
-Our simulation tested baseline growth rates from 0% to 100%/year, with VDWM=1 and stable RBP:
+I tested baseline growth rates from 0% to 100%/year in simulation, with VDWM=1 and stable RBP:
 
 | Baseline Growth | Reward/TiB (Y5) | Pledge/32GiB (Y5) | ROI (Y5) |
 |---|---|---|---|
@@ -254,11 +254,11 @@ Our simulation tested baseline growth rates from 0% to 100%/year, with VDWM=1 an
 
 **Rewards are identical** across all growth rates (because $\text{RBP} \ll \text{baseline}$ in all cases, so $\bar{R} = \text{RBP}$ regardless). But pledge **increases** when baseline growth slows, because the consensus pledge formula:
 
-$$\text{AdditionalIP} = 0.30 \times C(t) \times \frac{\text{SectorQAP}}{\max\bigl(\text{Baseline}(t),\; \text{NetworkQAP}(t)\bigr)}$$
+$$\text{AdditionalIP} = 0.30 \times C(t) \times \frac{\text{SectorQAP}}{\max(\text{Baseline}(t),\; \text{NetworkQAP}(t))}$$
 
 produces a larger result when the baseline is smaller.
 
-Counterintuitively, the growing baseline *helps* SP economics by keeping the denominator large and pledge low. We therefore leave the baseline growth rate unchanged.
+Counterintuitively, the growing baseline *helps* SP economics by keeping the denominator large and pledge low. I therefore leave the baseline growth rate unchanged.
 
 ### Why combine VDWM reduction with mining reserve burn?
 
@@ -434,10 +434,9 @@ This aligns with the principle of a minimal, neutral base layer supporting diver
 ### Simulation code
 
 The economic simulation used to generate the data in this FIP is publicly available:
-- **Repository:** [github.com/Reiers/super-fip-sim](https://github.com/Reiers/super-fip-sim)
 - **Language:** CUDA C++ (validated on NVIDIA RTX 5080, Blackwell architecture)
 - **Data:** 12 scenario CSVs (3,650 daily data points each) + 210-point parameter sweep
-- **Reproducibility:** Build with `make` (requires CUDA toolkit 13.0+), run with `make run`
+- **Reproducibility:** Source code, build instructions, and full output data will be published alongside this FIP. Build with `make` (requires CUDA toolkit 13.0+), run with `make run`.
 
 All economic claims in this FIP can be independently verified by running the simulation or by direct computation from the Filecoin spec formulas cited above.
 

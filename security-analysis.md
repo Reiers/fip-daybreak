@@ -55,7 +55,7 @@ All calculations use the following on-chain values:
 
 ### Security properties to prove
 
-For each adversary class, we prove:
+For each adversary class, I prove:
 
 **P1 (No profitable flash power):** No single-cycle attack (onboard → earn → terminate) has positive expected return at any epoch during the transition.
 
@@ -107,7 +107,7 @@ $$\text{Term\_Fee} = N \times 0.085 \times \text{IP}(e)$$
 
 $$\text{Opportunity\_Cost}(T) = N \times \text{IP}(e) \times r_{\text{market}} \times \frac{T}{365}$$
 
-Note: We use only the 25% immediate reward because on termination, unvested rewards are forfeit. The attacker does not receive the 75% vested portion if they terminate early.
+Note: I use only the 25% immediate reward because on termination, unvested rewards are forfeit. The attacker does not receive the 75% vested portion if they terminate early.
 
 ### 2.4 Break-even analysis
 
@@ -137,7 +137,7 @@ If the attacker holds for exactly $T$ days then terminates, they receive:
 
 For $T < 180$ days, the vested portion per day decreases. The reward earned on day $d$ vests linearly over 180 days, so by day $T$ the portion vested is:
 
-$$\text{Vested}(T) = \frac{1}{T} \int_0^{T} \min\!\left(1,\; \frac{T - d}{180}\right) dd \;\approx\; \frac{T}{360} \quad \text{for } T \ll 180$$
+$$\text{Vested}(T) = \frac{1}{T} \int_0^{T} \min\left(1,\; \frac{T - d}{180}\right) dd \;\approx\; \frac{T}{360} \quad \text{for } T \ll 180$$
 
 Total effective reward fraction:
 
@@ -226,7 +226,7 @@ At transition end: M = 10/10 = 1×
 
 The maximum arbitrage for committing at epoch e₁ vs epoch e₂ (where e₁ < e₂):
 
-$$\text{Arbitrage}(e_1, e_2) = r \times \bigl(M(e_1) - M(e_2)\bigr) \times L_{\text{remaining}}$$
+$$\text{Arbitrage}(e_1, e_2) = r \times (M(e_1) - M(e_2)) \times L_{\text{remaining}}$$
 
 **Worst case** (commit at transition start vs waiting until end):
 

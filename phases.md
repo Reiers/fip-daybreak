@@ -142,7 +142,7 @@ For perspective, here's the gas impact of recent accepted FIPs:
 | FIP | Gas Change | Description |
 |---|---|---|
 | **FIP-0098** (nv25, Simple Termination Fee) | Slight reduction | Replaced complex termination formula with simple percentage. Removed several BigInt operations per termination. Net gas: slightly lower. |
-| **FIP-0100** (nv25, Daily Proof Fee) | **New gas cost added** | Added `daily_proof_fee()` calculation to every sector commit and extension. Adds ~500–1,000 gas per sector (comparable to our change). Also added new `DailyFee` field to every deadline. |
+| **FIP-0100** (nv25, Daily Proof Fee) | **New gas cost added** | Added `daily_proof_fee()` calculation to every sector commit and extension. Adds ~500–1,000 gas per sector (comparable to Daybreak). Also added new `DailyFee` field to every deadline. |
 | **FIP-0081** (Pledge Ramp) | **Increased complexity** | Added gamma/skew interpolation to `initial_pledge_for_power()` with 2 BigInt divisions and a convex combination. Multiple additional multiplies and divides per pledge calculation. |
 | **FIP-0092** (NI-PoRep) | **New proof type** | Added entirely new proof verification codepath with new gas charges (4.5M–5.7M gas per NI proof). |
 | **FIP-Daybreak** (this proposal) | **~200–350 gas per sector** | One epoch comparison + one BigInt interpolation. < 0.01% of any affected operation. |
@@ -153,7 +153,7 @@ FIP-Daybreak's gas impact is the smallest of any recent core FIP, by two orders 
 
 | Constraint | Limit | Impact |
 |---|---|---|
-| Block gas limit | 10,000,000,000 (10B) | Not affected. Our change adds < 10K gas per block even in worst-case batch commits. |
+| Block gas limit | 10,000,000,000 (10B) | Not affected. Daybreak adds < 10K gas per block even in worst-case batch commits. |
 | Single message limit | ~1,500,000,000 (1.5B) practical | Not affected. Largest batches (819 sectors) add ~245K gas = 0.016% of limit. |
 | CronTick budget | Must not exceed block limit across all miners | Not affected. Zero CronTick change under grandfathering. |
 | Tipset weight calculation | Uses QAP for leader election weight | Not affected. QAP is read from state, not recomputed per block. |
@@ -227,7 +227,7 @@ A subtle but critical implementation detail:
 |---|---|---|
 | Quality Base Multiplier (QBM) | 1× | `BigInt::from(10)` |
 | Verified Deal Weight Multiplier (VDWM) | 10× | `BigInt::from(100)` |
-| Our target after transition | 1× (equal to QBM) | `BigInt::from(10)` |
+| Target after transition | 1× (equal to QBM) | `BigInt::from(10)` |
 
 The `quality_for_weight()` function divides by `QUALITY_BASE_MULTIPLIER` at the end, so the effective multiplier = code_value / 10. When we transition VDWM from 100 to 10 (code values), the effective multiplier goes from 10× to 1×. The FIP-Daybreak interpolation function MUST use code values (100→10), not effective ratios (10→1), to drop in correctly.
 
@@ -379,7 +379,7 @@ The governance analysis (`memory/fil-community-vs-ff-pl.md`) identified the "kil
   - `#fil-fips` Slack
   - `#fil-foc` Slack (FOC team should know — PDP/Pay/FWSS unaffected)
   - Filecoin governance forum
-- Publish simulation repo: `github.com/Reiers/super-fip-sim`
+- Publish simulation repo: `the simulation repository (to be published)`
 
 #### Week 2–3: Coalition building
 - **Pro-reform faction** (will support immediately):
@@ -398,11 +398,11 @@ The governance analysis (`memory/fil-community-vs-ff-pl.md`) identified the "kil
 
 | Objection | Response |
 |---|---|
-| "Fil+ incentivizes useful storage" | Our data: 90%+ verified data is non-retrievable. Multiplier doesn't increase total rewards — just redistributes. Real demand pays market rates. |
+| "Fil+ incentivizes useful storage" | Data shows: 90%+ verified data is non-retrievable. Multiplier doesn't increase total rewards — just redistributes. Real demand pays market rates. |
 | "CC sectors don't contribute value" | CC sectors contribute storage capacity and security. The multiplier doesn't change total capacity. Post-Daybreak, all sectors are treated equally. |
 | "SPs will leave if rewards change" | CC sector rewards INCREASE 8.5×. Only Fil+ gaming operations are negatively affected. Honest miners benefit enormously. |
 | "This changes network economics" | Total issuance is UNCHANGED. Only redistribution changes. Mathematically proven with 44,850 simulation datapoints. |
-| "Need CryptoEconLab analysis first" | Our simulation IS the analysis. Code is public at github.com/Reiers/super-fip-sim. Challenge them to find errors. We used their spec formulas. |
+| "Need CryptoEconLab analysis first" | The simulation IS the analysis. Code is public at the simulation repository (to be published). Challenge them to find errors. It uses their spec formulas. |
 | "Need voting tool before any economics FIP" | FIP-0098 (termination fee) and FIP-0100 (daily fee) both changed miner economics without a voting tool. This is a parameter change, not governance innovation. |
 | "Migration is too complex" | Daybreak has the lightest migration of any recent core FIP — zero sector iteration, one balance transfer. Compare to nv25 which iterated every partition of every deadline of every miner. |
 | "Gas impact is unknown" | Phase 2 proved < 0.01% gas overhead for any operation. WindowPoSt: zero change. CronTick: zero change. |
@@ -430,7 +430,7 @@ The governance analysis (`memory/fil-community-vs-ff-pl.md`) identified the "kil
 | 3. Security Analysis | ✅ Done | Phase 2 | **COMPLETE** | 5 attack vectors, all safe |
 | 4. Community Pre-Review | 2–4 weeks | Phases 1–3 | **Next** | Coalition + FIP PR |
 
-**Calibration testing** happens post-acceptance, when the core team implements the FIP for a network upgrade. Not our pre-submission responsibility.
+**Calibration testing** happens post-acceptance, when the core team implements the FIP for a network upgrade. Not the pre-submission responsibility.
 
 **Total estimated: 2–4 weeks to FIP submission** (Phases 1–3 done in 1 day, only community work remains)
 
