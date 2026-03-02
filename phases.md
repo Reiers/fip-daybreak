@@ -13,25 +13,25 @@
 ### Proven facts:
 1. **VDWM has zero effect on total minting** — baseline uses RBP, not QAP. Verified mathematically and by simulation.
 2. **CC sector revenue increases 8.5×** when VDWM goes from 10 to 1 (same total issuance, less QAP competing).
-3. **Consensus pledge unchanged** — baseline (114 EiB) >> QAP in all scenarios, so `max(baseline, QAP)` = baseline always.
-4. **Storage pledge increases 24%** — because daily reward per sector is higher, and storage pledge = 20 days of reward.
-5. **Net ROI improvement: 58% → 399% annual** on pledge for CC sectors.
-6. **Baseline growth should stay at 100%/yr** — counterintuitively, slowing it *increases* pledge (smaller denominator in consensus pledge formula).
-7. **Mining reserve burn is economically neutral** but removes 300M FIL of unrealized inflation potential.
-8. **1-year linear transition is optimal** — smooth for SPs, matches immediate removal at completion.
+3. **Pledge increases ~6.5× per sector** — FIP-0081's Simple component scales with sector's share of NetworkQAP. When QAP drops from 18.5 to 2.17 EiB, each sector's share (and Simple pledge) grows proportionally.
+4. **Net ROI improvement: ~23% → ~30%** on pledge for CC sectors. The 8.5× reward is partially offset by higher pledge.
+5. **Baseline growth should stay at 100%/yr** — counterintuitively, slowing it *increases* pledge (smaller denominator in Baseline pledge component).
+6. **Mining reserve burn is economically neutral** but removes 300M FIL of unrealized inflation potential.
+7. **1-year linear transition is optimal** — smooth for SPs, matches immediate removal at completion.
 
 ### Key numbers:
 | Metric | Current (VDWM=10) | Post-Daybreak (VDWM=1) | Change |
 |---|---|---|---|
 | Daily issuance | 66,249 FIL | 66,249 FIL | **unchanged** |
 | CC sector reward (32 GiB) | 0.000107 FIL/day | 0.000910 FIL/day | **+8.5×** |
-| Total pledge per CC sector | 0.0673 FIL | 0.0834 FIL | +24% |
-| Annual ROI on pledge | 58% | 399% | **+6.9×** |
+| Total pledge per CC sector (FIP-0081) | 0.169 FIL | 1.093 FIL | +6.5× |
+| Annual ROI on pledge | ~23% | ~30% | **+1.3×** |
 
 ### Files:
-- `sim/filecoin_econ_sim.cu` — CUDA source (Blackwell RTX 5080, sm_100)
+- `sim/filecoin_econ_sim.cu` — CUDA source (sm_75+ / sm_100, FIP-0081 corrected)
 - `results/scenario_*.csv` — 12 scenario trajectories (3,650 days each)
 - `results/parameter_sweep.csv` — 210 combinations × 5 checkpoints
+- `results/pledge_*.csv` — 4 pledge projection scenarios (3,650 days each)
 - `economics.md` — Full mathematical proof and analysis
 
 ---

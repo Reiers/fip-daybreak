@@ -90,35 +90,37 @@ This means:
 - ~524M FIL of baseline rewards are effectively locked by the unreachable baseline
 - The gap widens exponentially: baseline doubles yearly, RBP declines
 
-### Baseline growth rate sensitivity (Year 5, VDWM=1, RBP stable):
+### Baseline growth rate sensitivity (Year 5, VDWM=1, RBP stable, FIP-0081):
 
 | Baseline Growth | Reward/TiB | Pledge/32GiB | ROI |
 |---|---|---|---|
-| 0% (freeze) | 0.018244 | 0.085593 | 243% |
-| 25%/year | 0.018244 | 0.035713 | 583% |
-| 50%/year | 0.018244 | 0.021172 | 984% |
-| 75%/year | 0.018244 | 0.015923 | 1,308% |
-| 100%/year (status quo) | 0.018244 | 0.013721 | 1,518% |
+| 0% (freeze) | 0.018244 | 1.234710 | 16.9% |
+| 25%/year | 0.018244 | 1.199794 | 17.4% |
+| 50%/year | 0.018244 | 1.189616 | 17.5% |
+| 75%/year | 0.018244 | 1.185941 | 17.6% |
+| 100%/year (status quo) | 0.018244 | 1.184400 | 17.6% |
 
-**Key insight:** Slowing baseline growth doesn't change rewards (same RBP, same minting), but it significantly INCREASES the consensus pledge because `max(baseline, QAP)` in the denominator decreases when baseline is smaller.
+**Key insight:** Reward is identical across all growth rates (same RBP, same minting). Pledge varies only slightly because the FIP-0081 Simple component dominates (≈97% of consensus pledge). The Baseline component is the only part affected by baseline growth, and it's small when baseline >> QAP.
 
-**Recommendation:** Keep baseline growth at 100%/year. The growing baseline reduces pledge per sector over time, improving SP economics. Slowing it counterproductively increases pledge.
+**Recommendation:** Keep baseline growth at 100%/year. While it has minimal impact on pledge under current conditions, a growing baseline provides future headroom and reduces the Baseline pledge component.
 
 ---
 
-## 4. Scenario Comparison (Year 1 — Actionable Timeframe)
+## 4. Scenario Comparison (Year 1 — FIP-0081 corrected)
 
 | Scenario | Reward/TiB/day | Pledge/32GiB | ROI% | Description |
 |---|---|---|---|---|
-| **Status Quo** | 0.003369 | 0.036 | 106% | Current system |
-| **Fil+ Removed** | 0.028628 | 0.052 | 626% | VDWM 10→1, same trends |
-| **Gradual 3yr** | 0.004773 | 0.037 | 146% | 10→1 over 3 years |
-| **Gradual 1yr** | 0.028628 | 0.052 | 626% | 10→1 over 1 year |
-| **Conservative** | 0.010561 | 0.041 | 295% | VDWM 10→3 + reserve burn |
-| **Full Reform** | 0.027480 | 0.063 | 499% | VDWM→1, baseline 50%, burn |
-| **Full Reform Optimistic** | 0.025494 | 0.062 | 472% | Same + RBP grows 10%/yr |
+| **Status Quo** | 0.003369 | 0.160 | 24.0% | Current system |
+| **Fil+ Removed** | 0.028628 | 1.181 | 27.7% | VDWM 10→1, same trends |
+| **Gradual 3yr** | 0.004773 | 0.217 | 25.1% | 10→1 over 3 years |
+| **Gradual 1yr** | 0.028628 | 1.181 | 27.7% | 10→1 over 1 year |
+| **Conservative** | 0.010561 | 0.449 | 26.8% | VDWM 10→3 + reserve burn |
+| **Full Reform** | 0.027480 | 1.132 | 27.7% | VDWM→1, baseline 50%, burn |
+| **Full Reform Optimistic** | 0.025494 | 1.032 | 28.2% | Same + RBP grows 10%/yr |
 
 **Recommended: Gradual 1-year transition (10→1)** — achieves same end-state as immediate removal, but gives SPs time to adjust. By month 12, all sectors are equal.
+
+*Note: ROI improvement is modest (~24% → ~28%) because FIP-0081's Simple pledge component scales with the sector's share of NetworkQAP — rewards and pledge increase together. The primary benefit is 8.5× higher absolute revenue per sector, making CC mining economically viable without datacap.*
 
 ---
 
@@ -141,33 +143,28 @@ Combined with Fil+ removal, it addresses two community complaints simultaneously
 
 ---
 
-## 6. Sensitivity Analysis (Parameter Sweep — 210 Combinations)
+## 6. Sensitivity Analysis (Parameter Sweep — 210 Combinations, FIP-0081)
 
 ### Most important finding:
 
-**VDWM is the dominant parameter.** Across all 210 combinations:
+**VDWM controls absolute revenue; ROI converges.** Under FIP-0081, the Simple pledge component ensures that pledge scales with share of NetworkQAP — so changing VDWM affects absolute reward per sector (8.5× for 10→1) but has limited impact on ROI (pledge moves proportionally).
 
-| VDWM | Avg Reward/TiB (Y5) | Avg ROI (Y5) |
-|---|---|---|
-| 1 | 0.026x | 987% |
-| 2 | 0.013x | 676% |
-| 3 | 0.009x | 523% |
-| 5 | 0.005x | 367% |
-| 7 | 0.004x | 294% |
-| 10 | 0.003x | 225% |
-| 15 | 0.002x | 170% |
+### Best vs Worst at Year 5:
 
-(x = baseline normalization factor)
-
-Reducing VDWM has the single largest impact on SP economics — much larger than changing baseline growth or even RBP trajectory.
+| | VDWM | RBP trend | BL growth | Reward/TiB | Pledge/32G | ROI |
+|---|---|---|---|---|---|---|
+| **Best ROI** | 1 | +10%/yr | 100% | 0.012754 | 0.741 | 19.6% |
+| **Worst ROI** | 15 | +10%/yr | 0% | 0.001007 | 0.111 | 10.4% |
 
 ### VDWM=10 vs VDWM=1 (controlled comparison, RBP=-5%/yr, BL=100%):
 
 | | VDWM=10 | VDWM=1 | Change |
 |---|---|---|---|
 | Reward/TiB | 0.002634 | 0.022378 | **+8.5x** |
-| Pledge/32G | 0.003959 | 0.016299 | +4.1x |
-| ROI | 759% | 1,567% | **+2.1x** |
+| Pledge/32G | 0.181 | 1.526 | +8.4x |
+| ROI | 16.6% | 16.7% | ~0% |
+
+*At Year 5 with declining RBP, reward and pledge scale nearly identically — ROI converges regardless of VDWM. The difference is in absolute economics: each VDWM=1 sector earns 8.5× more FIL, making CC mining viable without datacap.*
 
 ---
 
@@ -197,8 +194,8 @@ The simulation's math tracks the spec within acceptable bounds.
 - Month 12: VDWM = 1 (all sectors equal)
 - **Impact:** CC sector revenue increases ~8.5x over 12 months
 - **Total issuance:** UNCHANGED (proven by simulation)
-- **Pledge:** +24% per CC sector (storage pledge increases with reward)
-- **Consensus pledge:** Unchanged (baseline dominates denominator)
+- **Pledge per CC sector:** +6.5× (0.169 → 1.093 FIL) — FIP-0081 Simple component drives most of the increase
+- **ROI:** ~23% → ~30% (modest improvement — reward and pledge scale together)
 
 ### Phase 2: Mining Reserve Burn
 - Set `FIL_MiningReserveAlloc` to 0 (burn/send to f099)

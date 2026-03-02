@@ -4,7 +4,7 @@
  * Validates minting model against Filecoin spec, then projects 10 years
  * forward under 12 reform scenarios + 1,050-point parameter sweep.
  *
- * Built for RTX 5080 (Blackwell sm_100), CUDA 13.1
+ * Built for RTX 6000 (Turing sm_75), CUDA 12.9+ / RTX 5080 (sm_100)
  * Author: Capri (for Nicklas/Reiers)  Date: 2026-02-27
  *
  * KEY INSIGHT: Baseline minting uses RBP (raw byte power), NOT QAP.
@@ -57,6 +57,12 @@
 // Pledge
 #define STORAGE_PLEDGE_DAYS 20.0
 #define CONSENSUS_TARGET    0.30
+
+// FIP-0081 pledge split (NV24, deployed Nov 2024)
+// ConsensusPledge = (1-γ) × SimplePledge + γ × BaselinePledge
+// SimplePledge    = 0.3 × CircSupply × SectorQAP / NetworkQAP
+// BaselinePledge  = 0.3 × CircSupply × SectorQAP / max(Baseline, NetworkQAP)
+#define PLEDGE_GAMMA        0.7     // Fully ramped as of ~Nov 2025
 
 // ============================================================
 // CURRENT CHAIN STATE (Feb 27, 2026 — from filfox API)
@@ -358,14 +364,17 @@ __global__ void simulate_scenarios(
         // --- Reward per TiB per day ---
         double reward_tib = reward_32gib * (1024.0 / 32.0);
         
-        // --- Pledge calculation ---
+        // --- Pledge calculation (FIP-0081) ---
         double daily_sector_reward = reward_32gib;
         double stor_pledge = STORAGE_PLEDGE_DAYS * daily_sector_reward;
         
-        // Consensus pledge = 30% * circ * sector_QAP / max(baseline, QAP)
-        // sector_QAP in GiB, baseline and QAP in GiB
-        double denom = fmax(bl_at_epoch * GIB_PER_EIB, total_qap_gib);
-        double cons_pledge = CONSENSUS_TARGET * circ * sector_qap_gib / denom;
+        // FIP-0081: ConsensusPledge = (1-γ) × Simple + γ × Baseline
+        // SimplePledge   = 0.3 × circ × sectorQAP / networkQAP
+        // BaselinePledge = 0.3 × circ × sectorQAP / max(baseline, networkQAP)
+        double simple_pledge = CONSENSUS_TARGET * circ * sector_qap_gib / total_qap_gib;
+        double baseline_denom = fmax(bl_at_epoch * GIB_PER_EIB, total_qap_gib);
+        double baseline_pledge = CONSENSUS_TARGET * circ * sector_qap_gib / baseline_denom;
+        double cons_pledge = (1.0 - PLEDGE_GAMMA) * simple_pledge + PLEDGE_GAMMA * baseline_pledge;
         
         double total_pledge = stor_pledge + cons_pledge;
         
@@ -482,7 +491,10 @@ __global__ void parameter_sweep(
             
             double daily_32gib = daily * 32.0 / total_qap_gib;
             double stor_p = STORAGE_PLEDGE_DAYS * daily_32gib;
-            double cons_p = CONSENSUS_TARGET * circ * 32.0 / fmax(bl * GIB_PER_EIB, total_qap_gib);
+            // FIP-0081 pledge
+            double simple_p = CONSENSUS_TARGET * circ * 32.0 / total_qap_gib;
+            double baseline_p = CONSENSUS_TARGET * circ * 32.0 / fmax(bl * GIB_PER_EIB, total_qap_gib);
+            double cons_p = (1.0 - PLEDGE_GAMMA) * simple_p + PLEDGE_GAMMA * baseline_p;
             double pledge = stor_p + cons_p;
             double roi = (pledge > 0.0) ? (daily_32gib * 365.25 / pledge) * 100.0 : 0.0;
             
@@ -496,6 +508,149 @@ __global__ void parameter_sweep(
     }
     
     results[tid] = res;
+}
+
+// ============================================================
+// PHASE 4: PLEDGE PROJECTION — Total Locked FIL over time
+// Models network-wide pledge under 1x vs 10x paths
+// Uses FIP-0081 formula: ConsensusPledge = γ*Baseline + (1-γ)*Simple
+// ============================================================
+
+#define N_PLEDGE_SCENARIOS  4
+#define SECTOR_DURATION_DAYS 540   // 18 months average sector lifetime
+#define SECTORS_PER_EIB     (GIB_PER_EIB / 32.0)  // 33,554,432 sectors per EiB
+
+struct PledgeDaily {
+    int    day;
+    double year;
+    double rbp_eib;
+    double qap_eib;
+    double per_sector_pledge;
+    double network_pledge_fil;   // Total locked FIL (all sectors)
+    double daily_issuance;
+    double circ_supply;
+};
+
+// Each thread = one pledge scenario
+__global__ void pledge_projection(
+    PledgeDaily* output,           // [N_PLEDGE_SCENARIOS][SIM_DAYS]
+    double init_cumsum,
+    double init_total_minted,
+    double init_network_pledge     // Current total locked pledge
+) {
+    int sid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (sid >= N_PLEDGE_SCENARIOS) return;
+    
+    // Scenario configs:
+    // 0: Status Quo (VDWM=10, RBP -5%/yr)
+    // 1: Daybreak transition 10→1 over 1yr (RBP -5%/yr)
+    // 2: Daybreak transition 10→1 over 1yr (RBP stable)
+    // 3: Daybreak transition 10→1 over 1yr (RBP +5%/yr recovery)
+    
+    double target_vdwm[4] = {10.0, 1.0, 1.0, 1.0};
+    double rbp_annual[4] = {-0.05, -0.05, 0.0, 0.05};
+    int transition_epochs[4] = {0, EPOCHS_PER_YEAR, EPOCHS_PER_YEAR, EPOCHS_PER_YEAR};
+    
+    double vdwm_target = target_vdwm[sid];
+    double rbp_rate = log(1.0 + rbp_annual[sid]) / (double)EPOCHS_PER_YEAR;
+    int trans_ep = transition_epochs[sid];
+    
+    double b_current = B0_EIB * exp(G_DEFAULT * (double)CURRENT_EPOCH);
+    double g_forward = G_DEFAULT;  // Keep baseline growth at 100%/yr
+    
+    double cumsum = init_cumsum;
+    double prev_total_minted = init_total_minted;
+    double circ = CURRENT_CIRC_FIL;
+    
+    // Track per-sector pledge as rolling average
+    // Network pledge = sum of all active sectors' individual pledges
+    // Approximation: network_pledge tracks with weighted avg pledge × active sectors
+    double network_pledge = init_network_pledge;
+    double prev_per_sector = network_pledge / (CURRENT_RBP_EIB * SECTORS_PER_EIB);
+    
+    PledgeDaily* out = &output[sid * SIM_DAYS];
+    
+    for (int d = 0; d < SIM_DAYS; d++) {
+        int epoch = CURRENT_EPOCH + (d + 1) * EPOCHS_PER_DAY;
+        double year = (double)(d + 1) / 365.25;
+        
+        double rbp = CURRENT_RBP_EIB * exp(rbp_rate * (double)((d+1) * EPOCHS_PER_DAY));
+        if (rbp < 0.1) rbp = 0.1;
+        
+        // VDWM transition
+        double vdwm_now;
+        if (trans_ep > 0) {
+            int elapsed = (d + 1) * EPOCHS_PER_DAY;
+            if (elapsed >= trans_ep) vdwm_now = vdwm_target;
+            else vdwm_now = 10.0 + ((double)elapsed / (double)trans_ep) * (vdwm_target - 10.0);
+        } else {
+            vdwm_now = vdwm_target;
+        }
+        
+        double qap = rbp * (1.0 - FIL_PLUS_FRAC + FIL_PLUS_FRAC * vdwm_now);
+        double elapsed_ep = (double)((d+1) * EPOCHS_PER_DAY);
+        double bl = b_current * exp(g_forward * elapsed_ep);
+        
+        double r_bar = fmin(bl, rbp);
+        cumsum += r_bar * (double)EPOCHS_PER_DAY;
+        
+        double theta = effective_time(cumsum, G_DEFAULT);
+        double sm = simple_minted_at(epoch);
+        double bm = baseline_minted_at(theta);
+        double total = sm + bm;
+        double daily = total - prev_total_minted;
+        if (daily < 0.0) daily = 0.0;
+        prev_total_minted = total;
+        
+        circ += daily + (d < 240 ? 83333.0 : 0.0) - 2000.0;
+        
+        // Per-sector pledge for NEW sectors committed today
+        double total_qap_gib = qap * GIB_PER_EIB;
+        double daily_32gib = daily * 32.0 / total_qap_gib;
+        double stor_p = STORAGE_PLEDGE_DAYS * daily_32gib;
+        // FIP-0081 pledge
+        double simple_p = CONSENSUS_TARGET * circ * 32.0 / total_qap_gib;
+        double baseline_p = CONSENSUS_TARGET * circ * 32.0 / fmax(bl * GIB_PER_EIB, total_qap_gib);
+        double cons_p = (1.0 - PLEDGE_GAMMA) * simple_p + PLEDGE_GAMMA * baseline_p;
+        double new_sector_pledge = stor_p + cons_p;
+        
+        // Network pledge model:
+        // Each day, ~1/SECTOR_DURATION_DAYS of sectors expire (pledge returned)
+        // New sectors committed at current RBP level replace them
+        // Simplification: assume steady-state sector turnover
+        double expiry_fraction = 1.0 / (double)SECTOR_DURATION_DAYS;
+        double expired_pledge = network_pledge * expiry_fraction;
+        
+        // New sectors: maintain current RBP level
+        double active_sectors = rbp * SECTORS_PER_EIB;
+        double new_sectors_today = active_sectors * expiry_fraction;
+        double new_pledge = new_sectors_today * new_sector_pledge;
+        
+        // Also account for RBP change (net new/lost sectors)
+        double prev_rbp = (d == 0) ? CURRENT_RBP_EIB : 
+                          CURRENT_RBP_EIB * exp(rbp_rate * (double)(d * EPOCHS_PER_DAY));
+        double rbp_delta_sectors = (rbp - prev_rbp) * SECTORS_PER_EIB;
+        double net_change_pledge = 0.0;
+        if (rbp_delta_sectors > 0) {
+            net_change_pledge = rbp_delta_sectors * new_sector_pledge;
+        } else {
+            net_change_pledge = rbp_delta_sectors * (network_pledge / (prev_rbp * SECTORS_PER_EIB));
+        }
+        
+        network_pledge = network_pledge - expired_pledge + new_pledge + net_change_pledge;
+        if (network_pledge < 0.0) network_pledge = 0.0;
+        
+        prev_per_sector = new_sector_pledge;
+        
+        out[d].day = d + 1;
+        out[d].year = year;
+        out[d].rbp_eib = rbp;
+        out[d].qap_eib = qap;
+        out[d].per_sector_pledge = new_sector_pledge;
+        out[d].network_pledge_fil = network_pledge;
+        out[d].daily_issuance = daily;
+        out[d].circ_supply = circ;
+    }
 }
 
 // ============================================================
@@ -600,8 +755,8 @@ int main(int argc, char** argv) {
     const char* outdir = (argc > 1) ? argv[1] : "./results";
     
     printf("╔══════════════════════════════════════════════════════════╗\n");
-    printf("║  Filecoin Economic Simulation — Super FIP               ║\n");
-    printf("║  CUDA on Blackwell RTX 5080                             ║\n");
+    printf("║  Filecoin Economic Simulation — FIP-Daybreak            ║\n");
+    printf("║  CUDA Accelerated (sm_75+ / sm_100)                     ║\n");
     printf("╚══════════════════════════════════════════════════════════╝\n\n");
     
     // ---- Device info ----
@@ -668,19 +823,32 @@ int main(int argc, char** argv) {
     printf("  Total daily issuance:  UNCHANGED (%.0f FIL) — baseline uses RBP!\n\n",
            CURRENT_MINED_DAILY);
     
-    // Pledge comparison
+    // Pledge comparison (FIP-0081)
     double bl_gib = CURRENT_BASELINE_EIB * GIB_PER_EIB;
-    double cons_with = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / fmax(bl_gib, total_qap_gib);
-    double cons_without = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / fmax(bl_gib, qap_without);
+    // With Fil+ (10x): NetworkQAP = 18.5 EiB
+    double simple_with = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / total_qap_gib;
+    double baseline_with = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / fmax(bl_gib, total_qap_gib);
+    double cons_with = (1.0 - PLEDGE_GAMMA) * simple_with + PLEDGE_GAMMA * baseline_with;
+    // Without Fil+ (1x): NetworkQAP = RBP = 2.17 EiB
+    double simple_without = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / qap_without;
+    double baseline_without = CONSENSUS_TARGET * CURRENT_CIRC_FIL * 32.0 / fmax(bl_gib, qap_without);
+    double cons_without = (1.0 - PLEDGE_GAMMA) * simple_without + PLEDGE_GAMMA * baseline_without;
     double stor_with = STORAGE_PLEDGE_DAYS * reward_cc_with_filplus;
     double stor_without = STORAGE_PLEDGE_DAYS * reward_cc_without;
     
-    printf("  PLEDGE (32 GiB CC sector):\n");
-    printf("    With Fil+:    storage=%.6f + consensus=%.6f = %.6f FIL\n",
-           stor_with, cons_with, stor_with + cons_with);
-    printf("    Without Fil+: storage=%.6f + consensus=%.6f = %.6f FIL\n",
-           stor_without, cons_without, stor_without + cons_without);
-    printf("    Note: consensus pledge unchanged (baseline >> QAP in both cases)\n\n");
+    printf("  PLEDGE (32 GiB CC sector, FIP-0081 formula):\n");
+    printf("    With Fil+ (10x):\n");
+    printf("      storage=%.6f  simple=%.6f  baseline=%.6f\n", stor_with, simple_with, baseline_with);
+    printf("      consensus=(0.3×%.6f + 0.7×%.6f) = %.6f\n",
+           simple_with, baseline_with, cons_with);
+    printf("      TOTAL = %.4f FIL\n", stor_with + cons_with);
+    printf("    Without Fil+ (1x):\n");
+    printf("      storage=%.6f  simple=%.6f  baseline=%.6f\n", stor_without, simple_without, baseline_without);
+    printf("      consensus=(0.3×%.6f + 0.7×%.6f) = %.6f\n",
+           simple_without, baseline_without, cons_without);
+    printf("      TOTAL = %.4f FIL\n", stor_without + cons_without);
+    printf("    Note: Simple component scales with sector share of NetworkQAP\n");
+    printf("          Baseline component unchanged (baseline >> QAP in both cases)\n\n");
     
     double roi_with = (reward_cc_with_filplus * 365.25 / (stor_with + cons_with)) * 100.0;
     double roi_without = (reward_cc_without * 365.25 / (stor_without + cons_without)) * 100.0;
@@ -835,10 +1003,92 @@ int main(int argc, char** argv) {
         }
     }
     
+    // ============================================================
+    // PHASE 4: Pledge projections
+    // ============================================================
+    printf("\nPhase 4: Running %d pledge projection scenarios...\n", N_PLEDGE_SCENARIOS);
+    
+    size_t pledge_size = N_PLEDGE_SCENARIOS * SIM_DAYS * sizeof(PledgeDaily);
+    PledgeDaily* d_pledge;
+    cudaMalloc(&d_pledge, pledge_size);
+    
+    pledge_projection<<<1, N_PLEDGE_SCENARIOS>>>(
+        d_pledge, h_cumsum, h_total_minted, CURRENT_PLEDGE_FIL);
+    cudaDeviceSynchronize();
+    
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA pledge error: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+    
+    PledgeDaily* h_pledge = (PledgeDaily*)malloc(pledge_size);
+    cudaMemcpy(h_pledge, d_pledge, pledge_size, cudaMemcpyDeviceToHost);
+    
+    // Write pledge CSVs
+    const char* pledge_names[N_PLEDGE_SCENARIOS] = {
+        "StatusQuo_10x", "Daybreak_RBP_decline", "Daybreak_RBP_stable", "Daybreak_RBP_recovery"
+    };
+    for (int s = 0; s < N_PLEDGE_SCENARIOS; s++) {
+        char ppath[256];
+        snprintf(ppath, sizeof(ppath), "%s/pledge_%s.csv", outdir, pledge_names[s]);
+        FILE* pf = fopen(ppath, "w");
+        if (!pf) continue;
+        fprintf(pf, "day,year,rbp_eib,qap_eib,per_sector_pledge,network_pledge_fil,daily_issuance,circ_supply\n");
+        PledgeDaily* pd = &h_pledge[s * SIM_DAYS];
+        for (int d = 0; d < SIM_DAYS; d++) {
+            fprintf(pf, "%d,%.4f,%.4f,%.4f,%.8f,%.2f,%.2f,%.2f\n",
+                    pd[d].day, pd[d].year, pd[d].rbp_eib, pd[d].qap_eib,
+                    pd[d].per_sector_pledge, pd[d].network_pledge_fil,
+                    pd[d].daily_issuance, pd[d].circ_supply);
+        }
+        fclose(pf);
+        printf("  Written: %s\n", ppath);
+    }
+    
+    // Print pledge comparison table
+    printf("\n═══ PLEDGE PROJECTION COMPARISON ═══\n");
+    printf("%-25s %8s %14s %14s %14s %14s\n",
+           "Scenario", "Year", "Per-Sector", "Network Total", "Issuance/d", "Circ Supply");
+    printf("%-25s %8s %14s %14s %14s %14s\n",
+           "", "", "(FIL)", "(M FIL)", "(FIL)", "(M FIL)");
+    printf("───────────────────────── ──────── ────────────── ────────────── ────────────── ──────────────\n");
+    
+    int check_years[] = {1, 2, 5, 10};
+    for (int s = 0; s < N_PLEDGE_SCENARIOS; s++) {
+        PledgeDaily* pd = &h_pledge[s * SIM_DAYS];
+        for (int y = 0; y < 4; y++) {
+            int didx = check_years[y] * 365 - 1;
+            if (didx >= SIM_DAYS) continue;
+            printf("%-25s %6dyr %14.6f %14.2f %14.2f %14.2f\n",
+                   pledge_names[s], check_years[y],
+                   pd[didx].per_sector_pledge,
+                   pd[didx].network_pledge_fil / 1e6,
+                   pd[didx].daily_issuance,
+                   pd[didx].circ_supply / 1e6);
+        }
+        printf("\n");
+    }
+    
+    // Key comparison: network pledge difference at year 2 (transition complete)
+    int y2_idx = 2 * 365 - 1;
+    double sq_pledge = h_pledge[0 * SIM_DAYS + y2_idx].network_pledge_fil;
+    double db_pledge = h_pledge[1 * SIM_DAYS + y2_idx].network_pledge_fil;
+    printf("═══ KEY METRIC: Network Pledge at Year 2 (post-transition) ═══\n");
+    printf("  Status Quo (10x): %.2f M FIL locked\n", sq_pledge / 1e6);
+    printf("  Daybreak (1x):    %.2f M FIL locked\n", db_pledge / 1e6);
+    printf("  Difference:       %.2f M FIL (%.1f%%)\n",
+           (sq_pledge - db_pledge) / 1e6,
+           ((sq_pledge - db_pledge) / sq_pledge) * 100.0);
+    
+    free(h_pledge);
+    cudaFree(d_pledge);
+    
     printf("\n═══ SIMULATION COMPLETE ═══\n");
     printf("Results written to: %s/\n", outdir);
-    printf("  12 scenario CSVs + 1 parameter sweep CSV\n");
-    printf("  Total data points: %d\n", N_SCENARIOS * SIM_DAYS + N_SWEEP * N_CHECKPOINTS);
+    printf("  12 scenario CSVs + 4 pledge CSVs + 1 parameter sweep CSV\n");
+    printf("  Total data points: %d\n", 
+           N_SCENARIOS * SIM_DAYS + N_SWEEP * N_CHECKPOINTS + N_PLEDGE_SCENARIOS * SIM_DAYS);
     
     // Cleanup
     free(h_output);

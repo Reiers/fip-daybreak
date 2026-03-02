@@ -35,9 +35,12 @@ All calculations use the following on-chain values:
 | Network QAP | 18.50 EiB | 2.17 EiB (= RBP) |
 | CC sector daily reward (32 GiB) | 0.000107 FIL | 0.000910 FIL |
 | Storage pledge (IPBase) per sector | 0.002134 FIL | 0.018197 FIL |
-| Consensus pledge per sector | 0.065173 FIL | 0.065173 FIL |
-| Total initial pledge per sector | 0.067307 FIL | 0.083370 FIL |
-| Termination fee (8.5%, FIP-0098) | 0.005721 FIL | 0.007086 FIL |
+| Consensus pledge (simple, 30%) | 0.1207 FIL | 1.029 FIL |
+| Consensus pledge (baseline, 70%) | 0.0455 FIL | 0.0455 FIL |
+| Total initial pledge per sector (FIP-0081) | 0.169 FIL | 1.093 FIL |
+| Termination fee (8.5%, FIP-0098) | 0.01434 FIL | 0.09291 FIL |
+
+*Pledge uses FIP-0081 formula (NV24): ConsensusPledge = (1-γ)×SimplePledge + γ×BaselinePledge, γ=0.7.*
 
 ---
 
@@ -421,7 +424,7 @@ Only one path exists — all sectors are equal:
 Network QAP = RBP = 2.17 EiB
 Required QAP = 0.51 × 2.17 = 1.11 EiB
 Required RBP = 1.11 EiB (no multiplier)
-Required pledge = 1.11 EiB / 32 GiB × 0.0834 FIL = ~3.0M FIL ($4.5M)
+Required pledge = 1.11 EiB / 32 GiB × 1.093 FIL = ~40.9M FIL ($61.4M)
 Required hardware: 1.11 EiB of sealed storage
 ```
 
@@ -490,12 +493,14 @@ Current total pledge: 94.87M FIL ($142.3M)
 
 For an attacker to control 51% via pledge alone, they need ~$72.6M in FIL, locked for the duration of the attack plus vesting periods.
 
-Post-Daybreak:
-- Total pledge decreases slightly (Fil+ sectors dropping from ~0.086 to ~0.083 per sector as quality decreases)
-- But CC sectors' pledge INCREASES (from 0.067 to 0.083)
-- Net effect: approximately neutral total pledged FIL
+Post-Daybreak (FIP-0081):
+- Per-sector pledge INCREASES significantly (from 0.169 to 1.093 FIL for CC sectors)
+- This is driven by the Simple consensus pledge component scaling with sector's share of NetworkQAP
+- Network total consensus pledge: Simple component = 0.09 × CircSupply ≈ 74.9M FIL (identical under 1x and 10x)
+- Baseline component decreases (~30M FIL → ~3M FIL) but converges within 3 years
+- **Net effect: higher per-sector pledge, slightly lower network total (converging)**
 
-The economic barrier (pledge capital at risk) is preserved.
+The economic barrier (pledge capital at risk) is preserved and arguably strengthened — each sector requires ~6.5× more collateral.
 
 ---
 

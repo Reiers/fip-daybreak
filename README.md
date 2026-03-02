@@ -34,10 +34,12 @@ The network exceeded the baseline from April 2021 through early 2023 — at peak
 |---|---|---|---|
 | Daily network issuance | 66,249 FIL | 66,249 FIL | **unchanged** |
 | CC sector reward (32 GiB) | 0.000107 FIL/day | 0.000910 FIL/day | **+8.5×** |
-| Initial pledge per CC sector | 0.0673 FIL | 0.0834 FIL | +24% |
-| Annual ROI on pledge | 58% | 399% | **+6.9×** |
+| Initial pledge per CC sector (FIP-0081) | 0.169 FIL | 1.093 FIL | +6.5× |
+| Annual ROI on pledge | ~23% | ~30% | **+1.3×** |
 | Min physical cost of 51% attack | 0.944 EiB | 1.11 EiB | **+17.6% more secure** |
 | Virtual (non-physical) consensus power | ~16.3 EiB (88% of QAP) | 0 | **eliminated** |
+
+*Pledge uses the FIP-0081 formula (deployed NV24): ConsensusPledge = (1-γ)×SimplePledge + γ×BaselinePledge where γ=0.7. The Simple component scales with the sector's share of NetworkQAP — when VDWM drops from 10 to 1, NetworkQAP drops from 18.5 to 2.17 EiB, increasing each sector's Simple pledge proportionally. The 8.5× reward increase is partially offset by higher pledge, yielding a modest but real ROI improvement.*
 
 *Chain state at epoch 5,796,404. Source: [Filfox API](https://filfox.info/api/v1/overview).*
 
