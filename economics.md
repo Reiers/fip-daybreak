@@ -39,14 +39,17 @@ The multiplier ONLY redistributes existing rewards from CC sectors to Fil+ secto
 
 ### Current state (With Fil+, VDWM=10):
 
+*Pledge uses FIP-0081 formula (NV24): ConsensusPledge = (1-γ)×Simple + γ×Baseline, γ=0.7*
+
 | Metric | CC Sector (32 GiB) | Fil+ Sector (32 GiB) |
 |---|---|---|
 | QAP | 32 GiB | 320 GiB |
 | Daily reward | 0.000107 FIL ($0.00016) | 0.001067 FIL ($0.0016) |
 | Storage pledge | 0.002134 FIL | 0.021340 FIL |
-| Consensus pledge | 0.065173 FIL | 0.065173 FIL |
-| **Total pledge** | **0.067 FIL** | **0.086 FIL** |
-| Annual ROI on pledge | 57.9% | 452.5% |
+| Consensus pledge (simple, 30%) | 0.1207 FIL | 1.207 FIL |
+| Consensus pledge (baseline, 70%) | 0.0455 FIL | 0.455 FIL |
+| **Total pledge** | **0.169 FIL** | **1.683 FIL** |
+| Annual ROI on pledge | ~23% | ~23% |
 
 ### After reform (Without Fil+, VDWM=1):
 
@@ -55,15 +58,17 @@ The multiplier ONLY redistributes existing rewards from CC sectors to Fil+ secto
 | QAP | 32 GiB |
 | Daily reward | 0.000910 FIL ($0.00137) |
 | Storage pledge | 0.018197 FIL |
-| Consensus pledge | 0.065173 FIL |
-| **Total pledge** | **0.083 FIL** |
-| Annual ROI on pledge | 398.6% |
+| Consensus pledge (simple, 30%) | 1.029 FIL |
+| Consensus pledge (baseline, 70%) | 0.0455 FIL |
+| **Total pledge** | **1.093 FIL** |
+| Annual ROI on pledge | ~30% |
 
 **Impact:**
 - CC sector reward: **+8.5x** (from $0.00016 to $0.00137 per day)
-- Pledge: +24% (from 0.067 to 0.083 FIL — storage pledge increases because daily reward is higher)
-- ROI: +589% (from 57.9% to 398.6% annual)
-- Consensus pledge: **UNCHANGED** (because baseline 114 EiB >> QAP in both cases)
+- Pledge: +6.5× (from 0.169 to 1.093 FIL — Simple consensus pledge scales with share of NetworkQAP)
+- ROI: +30% (from ~23% to ~30% annual)
+- Consensus pledge (baseline component): **UNCHANGED** (because baseline 114 EiB >> QAP in both cases)
+- Consensus pledge (simple component): scales proportionally with rewards (8.5×), as designed by FIP-0081
 
 ---
 

@@ -106,17 +106,20 @@ With VDWM=10, a CC sector competes against Fil+ sectors holding 10× its apparen
 
 **Per 32 GiB CC sector at epoch 5,796,404:**
 
+*Note: Pledge calculations use the FIP-0081 formula (deployed NV24), which splits consensus pledge into a Simple component (30% weight, scales with sector's share of NetworkQAP) and a Baseline component (70% weight, scales with sector's share of max(Baseline, NetworkQAP)). The gamma ramp is complete (γ=0.7).*
+
 | Metric | Current (VDWM=10) | After Daybreak (VDWM=1) | Change |
 |---|---|---|---|
 | Daily reward | 0.000107 FIL | 0.000910 FIL | **+8.5×** |
 | Storage pledge (20 days) | 0.00213 FIL | 0.01820 FIL | +8.5× |
-| Consensus pledge | 0.06517 FIL | 0.06517 FIL | **unchanged** |
-| **Total initial pledge** | **0.0673 FIL** | **0.0834 FIL** | +24% |
-| Annual ROI on pledge | 58% | 399% | **+6.9×** |
+| Consensus pledge (simple) | 0.1207 FIL | 1.029 FIL | +8.5× |
+| Consensus pledge (baseline) | 0.0455 FIL | 0.0455 FIL | unchanged |
+| **Total initial pledge** | **0.169 FIL** | **1.093 FIL** | +6.5× |
+| Annual ROI on pledge | ~23% | ~30% | **+1.3×** |
 
-The consensus pledge is unchanged because its denominator $\max(Baseline, QAP)$ evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB). Storage pledge increases proportionally to the higher per-sector reward — this is a direct function of the sector earning more.
+Under FIP-0081, the consensus pledge Simple component scales with the sector's share of NetworkQAP — when the multiplier is removed, NetworkQAP drops from 18.5 EiB to 2.17 EiB, so each sector's share (and thus its Simple pledge) increases proportionally to its reward increase. The Baseline component is unchanged because $\max(Baseline, QAP)$ evaluates to the baseline in both cases (114.5 EiB >> 18.5 EiB >> 2.17 EiB).
 
-**Net effect**: Revenue per unit of physical storage increases 8.5× while total pledge increases only 24%. ROI on pledged capital improves from 58% to 399% annually.
+**Net effect**: Revenue per unit of physical storage increases 8.5×. Pledge also increases (driven by the Simple component), but ROI on pledged capital still improves from ~23% to ~30%. The barrier to entry remains dramatically lower in absolute terms — a CC sector becomes immediately profitable without requiring datacap relationships.
 
 ### The baseline gap is now structural
 
@@ -260,11 +263,11 @@ Upon completion of the VDWM transition (12 months after activation), the quality
 
 ### Why a 12-month linear transition?
 
-| Approach | Year 1 CC Reward | Year 1 Pledge | Year 1 ROI |
+| Approach | Year 1 CC Reward | Year 1 Pledge (FIP-0081) | Year 1 ROI |
 |---|---|---|---|
-| Immediate (VDWM 10→1 at activation) | 0.000910 FIL/day | 0.0834 FIL | 399% |
-| 12-month gradual (this FIP) | 0.000910 FIL/day *at completion* | 0.0834 FIL *at completion* | 399% *at completion* |
-| 3-year gradual | 0.000210 FIL/day at year 1 | 0.037 FIL | 146% |
+| Immediate (VDWM 10→1 at activation) | 0.000910 FIL/day | 1.093 FIL | ~30% |
+| 12-month gradual (this FIP) | 0.000910 FIL/day *at completion* | 1.093 FIL *at completion* | ~30% *at completion* |
+| 3-year gradual | 0.000210 FIL/day at year 1 | ~0.30 FIL | ~26% |
 
 The 12-month transition achieves the same end-state as immediate removal while providing:
 1. Time for storage providers to adjust operational strategies.
