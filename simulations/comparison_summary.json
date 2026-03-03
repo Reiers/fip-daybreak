@@ -1,0 +1,29 @@
+{
+  "generated": "2026-03-03",
+  "network_state": {
+    "total_rbp_eib": 2.17,
+    "total_qap_eib": 7.06,
+    "baseline_eib": 114.5,
+    "circulating_supply": 520000000,
+    "daily_rewards": 264000
+  },
+  "scenarios": {
+    "status_quo": "No changes, Fil+ continues with 10x multiplier",
+    "daybreak": "12-month linear transition 10x\u21921x, mining reserve burn",
+    "looking_forward": "Immediate: no new Fil+, new CC gets 10x, existing CC stays 1x (with rational re-sealing)",
+    "looking_forward_no_churn": "Same but existing CC miners cannot/do not re-seal"
+  },
+  "key_findings": {
+    "new_sp_pledge_month0": {
+      "daybreak": 0.2656,
+      "looking_forward": 2.656,
+      "ratio": 10.0
+    },
+    "existing_cc_reward_month12": {
+      "daybreak": 1.39,
+      "looking_forward_churn": 0.38,
+      "looking_forward_no_churn": 1.39
+    },
+    "conclusion": "Looking Forward requires 10.0x higher pledge for new SPs, provides 1.39x reward improvement for existing CC miners (vs Daybreak 1.39x), and creates perverse churn incentive. Mathematically, universal 10x = universal 1x in steady state."
+  }
+}
